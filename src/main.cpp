@@ -194,15 +194,10 @@ public:
         ThreadPoolMgr::SetThreadCount(thread_count);
     }
 
-    void init_db()
+    void init_db(string &params_json, size_t label_byte_count, size_t nonce_byte_count, bool compressed)
     {
-        // TODO: make these arguments or initialize differently
-        const PSIParams &params = create_params();
-
-        size_t label_byte_count = 10;
-        size_t nonce_byte_count = 4;
-
-        _db = make_shared<SenderDB>(params, label_byte_count, nonce_byte_count, true);
+        auto params = PSIParams::Load(params_json);
+        _db = make_shared<SenderDB>(params, label_byte_count, nonce_byte_count, compressed);
     }
 
     void save_db(string &db_file_path)
@@ -255,7 +250,6 @@ public:
     }
 
 private:
-    const PSIParams &_psi_parameters = create_params();
     shared_ptr<SenderDB> _db;
 };
 
