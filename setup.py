@@ -13,7 +13,6 @@ ext_modules = [
     Pybind11Extension(
         "pyapsi",
         sorted(glob("src/*.cpp")),
-        # Example: passing in the version to the compiled code
         define_macros=[
             ("VERSION_INFO", __version__),
             ("__LINUX__", 1),

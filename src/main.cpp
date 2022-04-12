@@ -349,6 +349,8 @@ PYBIND11_MODULE(pyapsi, m)
     py::class_<APSIServer>(m, "APSIServer")
         .def(py::init<size_t>())
         .def("init_db", &APSIServer::init_db)
+        .def("save_db", &APSIServer::save_db)
+        .def("load_db", &APSIServer::load_db)
         .def("add_item", &APSIServer::add_item)
         .def("run", &APSIServer::run);
 
