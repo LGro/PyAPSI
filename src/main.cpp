@@ -60,57 +60,9 @@ using namespace seal;
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
 
-Label create_label(unsigned char start, size_t byte_count)
-{
-    Label label(byte_count);
-    iota(label.begin(), label.end(), start);
-    return label;
-}
-
 void sigint_handler(int param [[maybe_unused]])
 {
     exit(0);
-}
-
-unordered_set<Item> rand_subset(const unordered_map<Item, Label> &item_labels, size_t size)
-{
-    mt19937_64 rg;
-
-    set<size_t> ss;
-    while (ss.size() != size)
-    {
-        ss.emplace(static_cast<size_t>(rg() % item_labels.size()));
-    }
-
-    vector<Item> items_vec;
-    transform(item_labels.begin(), item_labels.end(), back_inserter(items_vec), [](auto &il)
-              { return il.first; });
-    unordered_set<Item> items_subset;
-    for (auto idx : ss)
-    {
-        items_subset.insert(items_vec[idx]);
-    }
-
-    return items_subset;
-}
-
-vector<Item> rand_subset(const vector<pair<Item, Label>> &items, size_t size)
-{
-    mt19937_64 rg;
-
-    set<size_t> ss;
-    while (ss.size() != size)
-    {
-        ss.emplace(static_cast<size_t>(rg() % items.size()));
-    }
-
-    vector<Item> items_subset;
-    for (auto idx : ss)
-    {
-        items_subset.push_back(items[idx].first);
-    }
-
-    return items_subset;
 }
 
 // TODO: Compare these (taken from test suite) against the recommended default for the
@@ -134,41 +86,6 @@ PSIParams create_params()
     seal_params.set_plain_modulus(65537);
 
     return {item_params, table_params, query_params, seal_params};
-}
-
-vector<pair<Item, Label>> generate_sender_items()
-{
-    size_t sender_size = 40;
-    vector<pair<Item, Label>> sender_items;
-    for (size_t i = 0; i < sender_size; i++)
-    {
-        sender_items.push_back(make_pair(
-            Item(i + 1, i + 1),
-            create_label(seal::util::safe_cast<unsigned char>((i + 1) & 0xFF), 10)));
-    }
-
-    return sender_items;
-}
-
-vector<Item> generate_receiver_items(vector<pair<Item, Label>> sender_items)
-{
-
-    // int_size <= client_size
-    size_t client_size = 12;
-    size_t int_size = 4;
-
-    vector<Item> recv_int_items = rand_subset(sender_items, int_size);
-    vector<Item> recv_items;
-    for (auto item : recv_int_items)
-    {
-        recv_items.push_back(item);
-    }
-    for (size_t i = int_size; i < client_size; i++)
-    {
-        recv_items.push_back({i + 1, ~(i + 1)});
-    }
-
-    return recv_items;
 }
 
 void print_intersection_results(const vector<Item> &items, const vector<MatchRecord> &intersection)
