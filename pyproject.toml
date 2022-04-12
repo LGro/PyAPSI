@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "pyapsi"
+version = "0.0.1"
+description = "Python wrapper for APSI"
+authors = ["Lukas Grossberger <code@grossberger.xyz>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+pyzmq = "^22.3.0"
+pybind11 = "^2.9.2"
+
+[tool.poetry.dev-dependencies]
+black = "^22.3.0"
+
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel",
+    "pybind11>=2.8.0",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel]
+test-command = "python {project}/tests/test.py"
+test-skip = "*universal2:arm64"
