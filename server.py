@@ -2,7 +2,6 @@ import json
 
 from pyapsi import APSIServer
 
-
 if __name__ == "__main__":
     n_threads = 2
     port = 1234

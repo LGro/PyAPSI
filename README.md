@@ -1,13 +1,15 @@
 # PyAPSI
 
+[![Actions Status](https://github.com/LGro/PyAPSI/workflows/ci-cd-pipeline/badge.svg)](https://github.com/LGro/PyAPSI/actions)
+
 A `pybind11` based wrapper for [APSI](https://github.com/microsoft/apsi).
 
 **NOTE:** This is a very early implementation with a high probability of changing
 dramatically.
 
 At the current stage, this wraps the ZMQ based communication CLI example from the APSI
-repository and does not expose the individual steps for a custom communication channel
-via Python.
+repository and does not expose the individual steps of the APSI "advanced API" for a
+custom communication channel via Python.
 
 ## Build
 

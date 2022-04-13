@@ -38,8 +38,6 @@
 #include <pybind11/pybind11.h>
 
 // APSI
-#include "apsi/network/stream_channel.h"
-#include "apsi/oprf/oprf_sender.h"
 #include "apsi/zmq/sender_dispatcher.h"
 #include "apsi/receiver.h"
 #include "apsi/sender.h"
