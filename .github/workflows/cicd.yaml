@@ -18,7 +18,6 @@ jobs:
           ./vcpkg/bootstrap-vcpkg.sh
           export CXXFLAGS="$CXXFLAGS -fPIC"
           ./vcpkg/vcpkg install seal[no-throw-tran] kuku log4cplus cppzmq flatbuffers jsoncpp apsi
-          ls -ahl /tmp/vcpkg/installed/x64-linux/lib/
       - name: Python setup
         run: |
           pip install poetry

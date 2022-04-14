@@ -26,7 +26,7 @@ ext_modules = [
             f"{vcpkg_installed_dir}/x64-linux/include/SEAL-3.7",
             f"{vcpkg_installed_dir}/x64-linux/include/APSI-0.7",
         ],
-        extra_objects=sorted(glob(f"{vcpkg_installed_dir}/x64-linux/lib/*.so")),
+        extra_objects=sorted(glob(f"{vcpkg_installed_dir}/x64-linux/lib/*.a")),
         cxx_std=17,
         extra_compile_args=[],
     ),

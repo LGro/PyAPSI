@@ -1,6 +1,6 @@
 /**
- * This file is based on the CLI example from https://github.com/microsoft/apsi which
- * is licensed as follows.
+ * This file is based on the CLI example and stream_sender_receiver integration test
+ * from https://github.com/microsoft/apsi which is licensed as follows:
  *
  * MIT License
  *
@@ -34,14 +34,16 @@
 #include <fstream>
 #include <csignal>
 
-// PyBind11
+// pybind11
 #include <pybind11/pybind11.h>
 
 // APSI
+#include "apsi/log.h"
 #include "apsi/zmq/sender_dispatcher.h"
 #include "apsi/receiver.h"
 #include "apsi/sender.h"
 #include "apsi/item.h"
+#include "apsi/network/stream_channel.h"
 #include "apsi/psi_params.h"
 #include "apsi/sender_db.h"
 #include "apsi/thread_pool_mgr.h"
@@ -55,35 +57,14 @@ using namespace apsi::util;
 using namespace apsi::oprf;
 using namespace seal;
 
+namespace py = pybind11;
+
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
 
 void sigint_handler(int param [[maybe_unused]])
 {
     exit(0);
-}
-
-// TODO: Compare these (taken from test suite) against the recommended default for the
-// APSI repo's CLI example
-PSIParams create_params()
-{
-    PSIParams::ItemParams item_params;
-    item_params.felts_per_item = 8;
-
-    PSIParams::TableParams table_params;
-    table_params.hash_func_count = 3;
-    table_params.max_items_per_bin = 16;
-    table_params.table_size = 4096;
-
-    PSIParams::QueryParams query_params;
-    query_params.query_powers = {1, 3, 5};
-
-    PSIParams::SEALParams seal_params;
-    seal_params.set_poly_modulus_degree(8192);
-    seal_params.set_coeff_modulus(CoeffModulus::BFVDefault(8192));
-    seal_params.set_plain_modulus(65537);
-
-    return {item_params, table_params, query_params, seal_params};
 }
 
 void print_intersection_results(const vector<Item> &items, const vector<MatchRecord> &intersection)
@@ -105,12 +86,10 @@ void print_intersection_results(const vector<Item> &items, const vector<MatchRec
 class APSIClient
 {
 public:
-    APSIClient() {}
+    APSIClient(string &params_json) : _receiver(PSIParams::Load(params_json)) {}
 
     int query(string &conn_addr, string &input_item, size_t thread_count = 1)
     {
-        // conn_addr could be "tcp://localhost:1234"
-
         signal(SIGINT, sigint_handler);
 
         Item item;
@@ -182,6 +161,81 @@ public:
 
         return 0;
     }
+
+    py::bytes oprf_request(string &input_item)
+    {
+        Item item;
+        item = input_item;
+        vector<Item> receiver_items;
+        receiver_items.push_back(item);
+
+        stringstream channel_stream;
+        network::StreamChannel channel(channel_stream);
+
+        _oprf_receiver = Receiver::CreateOPRFReceiver(receiver_items);
+        Request request = Receiver::CreateOPRFRequest(_oprf_receiver);
+
+        channel.send(move(request));
+        return py::bytes(channel_stream.str());
+    }
+
+    py::bytes build_query(string &oprf_response_string)
+    {
+        stringstream channel_stream;
+        network::StreamChannel channel(channel_stream);
+        channel_stream << oprf_response_string;
+        OPRFResponse oprf_response = to_oprf_response(channel.receive_response());
+        tie(_hashed_recv_items, _label_keys) = Receiver::ExtractHashes(oprf_response, _oprf_receiver);
+
+        // Create query and send
+        pair<Request, IndexTranslationTable> recv_query = _receiver.create_query(_hashed_recv_items);
+        // TODO: Somehow the default constructor of IndexTranslationTable is private(?)
+        // so that we can't just create a class attribute here. Or there is another way
+        // than doing "IndexTranslationTable _itt;" that I don't know.
+        // _itt = move(recv_query.second);
+
+        // Somehow this needs a separate output stream, because otherwise parsing
+        // query_request results in nullpointer
+        stringstream out_channel_stream;
+        network::StreamChannel out_channel(out_channel_stream);
+        out_channel.send(move(recv_query.first));
+        return py::bytes(out_channel_stream.str());
+    }
+
+    py::list extract_result_from_query_response(string &query_response_string)
+    {
+        signal(SIGINT, sigint_handler);
+
+        py::list labels;
+
+        stringstream channel_stream;
+        network::StreamChannel channel(channel_stream);
+        channel_stream << query_response_string;
+        QueryResponse query_response = to_query_response(channel.receive_response());
+        uint32_t package_count = query_response->package_count;
+
+        vector<ResultPart> rps;
+        while (package_count--)
+        {
+            rps.push_back(channel.receive_result(_receiver.get_seal_context()));
+        }
+
+        // TODO: See duplication note above
+        pair<Request, IndexTranslationTable> recv_query = _receiver.create_query(_hashed_recv_items);
+        auto itt = move(recv_query.second);
+        vector<MatchRecord> query_result = _receiver.process_result(_label_keys, itt, rps);
+
+        for (auto const &qr : query_result)
+            labels.append(qr.label.to_string());
+
+        return labels;
+    }
+
+private:
+    Receiver _receiver;
+    oprf::OPRFReceiver _oprf_receiver = oprf::OPRFReceiver(vector<Item>());
+    vector<HashedItem> _hashed_recv_items;
+    vector<LabelKey> _label_keys;
 };
 
 class APSIServer
@@ -192,10 +246,13 @@ public:
         ThreadPoolMgr::SetThreadCount(thread_count);
     }
 
-    void init_db(string &params_json, size_t label_byte_count, size_t nonce_byte_count, bool compressed)
+    void init_db(
+        string &params_json, size_t label_byte_count,
+        size_t nonce_byte_count, bool compressed)
     {
         auto params = PSIParams::Load(params_json);
-        _db = make_shared<SenderDB>(params, label_byte_count, nonce_byte_count, compressed);
+        _db = make_shared<SenderDB>(
+            params, label_byte_count, nonce_byte_count, compressed);
     }
 
     void save_db(string &db_file_path)
@@ -247,11 +304,40 @@ public:
         dispatcher.run(stop, port);
     }
 
+    py::bytes handle_oprf_request(string &oprf_request_string)
+    {
+        stringstream channel_stream;
+        network::StreamChannel channel(channel_stream);
+        channel_stream << oprf_request_string;
+        OPRFRequest oprf_request2 = to_oprf_request(
+            channel.receive_operation(nullptr, SenderOperationType::sop_oprf));
+        Sender::RunOPRF(oprf_request2, _db->get_oprf_key(), channel);
+        return py::bytes(channel_stream.str());
+    }
+
+    py::bytes handle_query(string &query_string)
+    {
+        Log::SetConsoleDisabled(false);
+        Log::SetLogLevel(Log::Level::debug);
+
+        stringstream channel_stream;
+        channel_stream << query_string;
+        network::StreamChannel channel(channel_stream);
+
+        QueryRequest sender_query = to_query_request(
+            channel.receive_operation(_db->get_seal_context()));
+        Query query(move(sender_query), _db);
+
+        // Somehow a separate output stream is needed, otherwise causes invalid buffer
+        stringstream out_channel_stream;
+        network::StreamChannel out_channel(out_channel_stream);
+        Sender::RunQuery(query, out_channel);
+        return py::bytes(out_channel_stream.str());
+    }
+
 private:
     shared_ptr<SenderDB> _db;
 };
-
-namespace py = pybind11;
 
 PYBIND11_MODULE(pyapsi, m)
 {
@@ -261,11 +347,17 @@ PYBIND11_MODULE(pyapsi, m)
         .def("save_db", &APSIServer::save_db)
         .def("load_db", &APSIServer::load_db)
         .def("add_item", &APSIServer::add_item)
-        .def("run", &APSIServer::run);
+        .def("run", &APSIServer::run)
+        .def("handle_oprf_request", &APSIServer::handle_oprf_request)
+        .def("handle_query", &APSIServer::handle_query);
 
     py::class_<APSIClient>(m, "APSIClient")
-        .def(py::init())
-        .def("query", &APSIClient::query);
+        .def(py::init<string &>())
+        .def("query", &APSIClient::query)
+        .def("oprf_request", &APSIClient::oprf_request)
+        .def("build_query", &APSIClient::build_query)
+        .def("extract_result_from_query_response",
+             &APSIClient::extract_result_from_query_response);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
