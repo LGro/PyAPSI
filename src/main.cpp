@@ -83,6 +83,12 @@ void print_intersection_results(const vector<Item> &items, const vector<MatchRec
     }
 }
 
+void enable_logging()
+{
+    Log::SetConsoleDisabled(false);
+    Log::SetLogLevel(Log::Level::debug);
+}
+
 class APSIClient
 {
 public:
@@ -189,10 +195,7 @@ public:
 
         // Create query and send
         pair<Request, IndexTranslationTable> recv_query = _receiver.create_query(_hashed_recv_items);
-        // TODO: Somehow the default constructor of IndexTranslationTable is private(?)
-        // so that we can't just create a class attribute here. Or there is another way
-        // than doing "IndexTranslationTable _itt;" that I don't know.
-        // _itt = move(recv_query.second);
+        _itt = make_shared<IndexTranslationTable>(move(recv_query.second));
 
         // Somehow this needs a separate output stream, because otherwise parsing
         // query_request results in nullpointer
@@ -220,10 +223,7 @@ public:
             rps.push_back(channel.receive_result(_receiver.get_seal_context()));
         }
 
-        // TODO: See duplication note above
-        pair<Request, IndexTranslationTable> recv_query = _receiver.create_query(_hashed_recv_items);
-        auto itt = move(recv_query.second);
-        vector<MatchRecord> query_result = _receiver.process_result(_label_keys, itt, rps);
+        vector<MatchRecord> query_result = _receiver.process_result(_label_keys, *_itt, rps);
 
         for (auto const &qr : query_result)
             labels.append(qr.label.to_string());
@@ -232,6 +232,7 @@ public:
     }
 
 private:
+    shared_ptr<IndexTranslationTable> _itt;
     Receiver _receiver;
     oprf::OPRFReceiver _oprf_receiver = oprf::OPRFReceiver(vector<Item>());
     vector<HashedItem> _hashed_recv_items;
@@ -317,9 +318,6 @@ public:
 
     py::bytes handle_query(string &query_string)
     {
-        Log::SetConsoleDisabled(false);
-        Log::SetLogLevel(Log::Level::debug);
-
         stringstream channel_stream;
         channel_stream << query_string;
         network::StreamChannel channel(channel_stream);
@@ -341,6 +339,8 @@ private:
 
 PYBIND11_MODULE(pyapsi, m)
 {
+    m.def("enable_logging", &enable_logging, "Enable APSI's stdout logging on the DEBUG level.");
+
     py::class_<APSIServer>(m, "APSIServer")
         .def(py::init<size_t>())
         .def("init_db", &APSIServer::init_db)
