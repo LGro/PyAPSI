@@ -105,7 +105,7 @@ public:
     string extract_out_buffer()
     {
         string str(_out_stream.str());
-        _out_stream.seekg(0);
+        _out_stream.seekp(0);
         return str;
     }
 
