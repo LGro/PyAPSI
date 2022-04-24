@@ -50,12 +50,8 @@
 
 using namespace std;
 using namespace apsi;
-using namespace apsi::receiver;
 using namespace apsi::sender;
-using namespace apsi::network;
-using namespace apsi::util;
-using namespace apsi::oprf;
-using namespace seal;
+using namespace apsi::receiver;
 
 namespace py = pybind11;
 
@@ -71,13 +67,13 @@ void print_intersection_results(const vector<Item> &items, const vector<MatchRec
 {
     for (size_t i = 0; i < intersection.size(); i++)
     {
-        std::cout << "Processing intersection " << i << std::endl;
+        cout << "Processing intersection " << i << endl;
         if (intersection[i].found)
         {
-            std::cout << "Found!" << std::endl;
+            cout << "Found!" << endl;
             if (intersection[i].label)
             {
-                std::cout << "Label: " << intersection[i].label.to_string() << std::endl;
+                cout << "Label: " << intersection[i].label.to_string() << endl;
             }
         }
     }
@@ -89,50 +85,78 @@ void enable_logging()
     Log::SetLogLevel(Log::Level::debug);
 }
 
+/*
+Custom StreamChannel class that uses separate stringstream objects as the backing streams
+input and output and allows the buffers to be easily set (for input) and extracted (for output).
+*/
+class StringStreamChannel : public network::StreamChannel
+{
+public:
+    StringStreamChannel() : network::StreamChannel(_in_stream, _out_stream) {}
+
+    // Sets the input buffer to hold a given string. The read/get-position is set to beginning.
+    void set_in_buffer(const string &str)
+    {
+        _in_stream.str(str);
+        _in_stream.seekg(0);
+    }
+
+    // Returns the value in the output buffer as a string. The write/put-position is set to beginning.
+    string extract_out_buffer()
+    {
+        string str(_out_stream.str());
+        _out_stream.seekp(0);
+        return str;
+    }
+
+private:
+    stringstream _in_stream;
+    stringstream _out_stream;
+};
+
 class APSIClient
 {
 public:
     APSIClient(string &params_json) : _receiver(PSIParams::Load(params_json)) {}
 
-    int query(string &conn_addr, string &input_item, size_t thread_count = 1)
+    int query(const string &conn_addr, const string &input_item, size_t thread_count = 1)
     {
         signal(SIGINT, sigint_handler);
 
-        Item item;
-        item = input_item;
+        Item item(input_item);
         vector<Item> recv_items;
         recv_items.push_back(item);
 
         // Connect to the network
-        ZMQReceiverChannel channel;
+        network::ZMQReceiverChannel channel;
 
-        std::cout << "Connecting to " << conn_addr << std::endl;
+        cout << "Connecting to " << conn_addr << endl;
         channel.connect(conn_addr);
         if (channel.is_connected())
         {
-            std::cout << "Successfully connected to " << conn_addr << std::endl;
+            cout << "Successfully connected to " << conn_addr << endl;
         }
         else
         {
-            std::cout << "Failed to connect to " << conn_addr << std::endl;
+            cout << "Failed to connect to " << conn_addr << endl;
             return -1;
         }
 
         unique_ptr<PSIParams> params;
         try
         {
-            std::cout << "Sending parameter request" << std::endl;
+            cout << "Sending parameter request" << endl;
             params = make_unique<PSIParams>(Receiver::RequestParams(channel));
-            std::cout << "Received valid parameters" << std::endl;
+            cout << "Received valid parameters" << endl;
         }
         catch (const exception &ex)
         {
-            std::cout << "Failed to receive valid parameters: " << ex.what() << std::endl;
+            cout << "Failed to receive valid parameters: " << ex.what() << endl;
             return -1;
         }
 
         ThreadPoolMgr::SetThreadCount(thread_count);
-        std::cout << "Setting thread count to " << ThreadPoolMgr::GetThreadCount() << std::endl;
+        cout << "Setting thread count to " << ThreadPoolMgr::GetThreadCount() << endl;
 
         Receiver receiver(*params);
 
@@ -140,26 +164,26 @@ public:
         vector<LabelKey> label_keys;
         try
         {
-            std::cout << "Sending OPRF request for " << recv_items.size() << " items" << std::endl;
+            cout << "Sending OPRF request for " << recv_items.size() << " items" << endl;
             tie(oprf_items, label_keys) = Receiver::RequestOPRF(recv_items, channel);
-            std::cout << "Received OPRF request" << std::endl;
+            cout << "Received OPRF request" << endl;
         }
         catch (const exception &ex)
         {
-            std::cout << "OPRF request failed: " << ex.what() << std::endl;
+            cout << "OPRF request failed: " << ex.what() << endl;
             return -1;
         }
 
         vector<MatchRecord> query_result;
         try
         {
-            std::cout << "Sending APSI query" << std::endl;
+            cout << "Sending APSI query" << endl;
             query_result = receiver.request_query(oprf_items, label_keys, channel);
-            std::cout << "Received APSI query response" << std::endl;
+            cout << "Received APSI query response" << endl;
         }
         catch (const exception &ex)
         {
-            std::cout << "Failed sending APSI query: " << ex.what() << std::endl;
+            cout << "Failed sending APSI query: " << ex.what() << endl;
             return -1;
         }
 
@@ -168,59 +192,47 @@ public:
         return 0;
     }
 
-    py::bytes oprf_request(string &input_item)
+    py::bytes oprf_request(const string &input_item)
     {
-        Item item;
-        item = input_item;
+        Item item(input_item);
         vector<Item> receiver_items;
         receiver_items.push_back(item);
-
-        stringstream channel_stream;
-        network::StreamChannel channel(channel_stream);
 
         _oprf_receiver = Receiver::CreateOPRFReceiver(receiver_items);
         Request request = Receiver::CreateOPRFRequest(_oprf_receiver);
 
-        channel.send(move(request));
-        return py::bytes(channel_stream.str());
+        _channel.send(move(request));
+        return py::bytes(_channel.extract_out_buffer());
     }
 
-    py::bytes build_query(string &oprf_response_string)
+    py::bytes build_query(const string &oprf_response_string)
     {
-        stringstream channel_stream;
-        network::StreamChannel channel(channel_stream);
-        channel_stream << oprf_response_string;
-        OPRFResponse oprf_response = to_oprf_response(channel.receive_response());
+        _channel.set_in_buffer(oprf_response_string);
+        OPRFResponse oprf_response = to_oprf_response(_channel.receive_response());
         tie(_hashed_recv_items, _label_keys) = Receiver::ExtractHashes(oprf_response, _oprf_receiver);
 
         // Create query and send
         pair<Request, IndexTranslationTable> recv_query = _receiver.create_query(_hashed_recv_items);
         _itt = make_shared<IndexTranslationTable>(move(recv_query.second));
 
-        // Somehow this needs a separate output stream, because otherwise parsing
-        // query_request results in nullpointer
-        stringstream out_channel_stream;
-        network::StreamChannel out_channel(out_channel_stream);
-        out_channel.send(move(recv_query.first));
-        return py::bytes(out_channel_stream.str());
+        _channel.send(move(recv_query.first));
+        return py::bytes(_channel.extract_out_buffer());
     }
 
-    py::list extract_result_from_query_response(string &query_response_string)
+    py::list extract_result_from_query_response(const string &query_response_string)
     {
         signal(SIGINT, sigint_handler);
 
         py::list labels;
 
-        stringstream channel_stream;
-        network::StreamChannel channel(channel_stream);
-        channel_stream << query_response_string;
-        QueryResponse query_response = to_query_response(channel.receive_response());
+        _channel.set_in_buffer(query_response_string);
+        QueryResponse query_response = to_query_response(_channel.receive_response());
         uint32_t package_count = query_response->package_count;
 
         vector<ResultPart> rps;
         while (package_count--)
         {
-            rps.push_back(channel.receive_result(_receiver.get_seal_context()));
+            rps.push_back(_channel.receive_result(_receiver.get_seal_context()));
         }
 
         vector<MatchRecord> query_result = _receiver.process_result(_label_keys, *_itt, rps);
@@ -237,6 +249,7 @@ private:
     oprf::OPRFReceiver _oprf_receiver = oprf::OPRFReceiver(vector<Item>());
     vector<HashedItem> _hashed_recv_items;
     vector<LabelKey> _label_keys;
+    StringStreamChannel _channel;
 };
 
 class APSIServer
@@ -256,7 +269,7 @@ public:
             params, label_byte_count, nonce_byte_count, compressed);
     }
 
-    void save_db(string &db_file_path)
+    void save_db(const string &db_file_path)
     {
         try
         {
@@ -267,11 +280,11 @@ public:
         }
         catch (const exception &e)
         {
-            std::cout << "Failed to save database: " << e.what() << std::endl;
+            cout << "Failed to save database: " << e.what() << endl;
         }
     }
 
-    void load_db(string &db_file_path)
+    void load_db(const string &db_file_path)
     {
         try
         {
@@ -283,15 +296,15 @@ public:
         }
         catch (const exception &e)
         {
-            std::cout << "Failed to load database: " << e.what() << std::endl;
+            cout << "Failed to load database: " << e.what() << endl;
         }
     }
-    void add_item(string &input_item, string &input_label)
+    void add_item(const string &input_item, const string &input_label)
     {
-        Item item;
-        item = input_item;
+        Item item(input_item);
+
         // TODO: does this need to match the label byte count?
-        std::vector<unsigned char> label(input_label.begin(), input_label.end());
+        vector<unsigned char> label(input_label.begin(), input_label.end());
         _db->insert_or_assign(make_pair(item, label));
     }
 
@@ -305,36 +318,31 @@ public:
         dispatcher.run(stop, port);
     }
 
-    py::bytes handle_oprf_request(string &oprf_request_string)
+    py::bytes handle_oprf_request(const string &oprf_request_string)
     {
-        stringstream channel_stream;
-        network::StreamChannel channel(channel_stream);
-        channel_stream << oprf_request_string;
-        OPRFRequest oprf_request2 = to_oprf_request(
-            channel.receive_operation(nullptr, SenderOperationType::sop_oprf));
-        Sender::RunOPRF(oprf_request2, _db->get_oprf_key(), channel);
-        return py::bytes(channel_stream.str());
+        OPRFRequest oprf_request2 = to_oprf_request(_channel.receive_operation(
+            nullptr,
+            network::SenderOperationType::sop_oprf));
+        Sender::RunOPRF(oprf_request2, _db->get_oprf_key(), _channel);
+        return py::bytes(_channel.extract_out_buffer());
     }
 
-    py::bytes handle_query(string &query_string)
+    py::bytes handle_query(const string &query_string)
     {
-        stringstream channel_stream;
-        channel_stream << query_string;
-        network::StreamChannel channel(channel_stream);
+        _channel.set_in_buffer(query_string);
 
-        QueryRequest sender_query = to_query_request(
-            channel.receive_operation(_db->get_seal_context()));
+        QueryRequest sender_query = to_query_request(_channel.receive_operation(
+            _db->get_seal_context(),
+            network::SenderOperationType::sop_query));
         Query query(move(sender_query), _db);
 
-        // Somehow a separate output stream is needed, otherwise causes invalid buffer
-        stringstream out_channel_stream;
-        network::StreamChannel out_channel(out_channel_stream);
-        Sender::RunQuery(query, out_channel);
-        return py::bytes(out_channel_stream.str());
+        Sender::RunQuery(query, _channel);
+        return py::bytes(_channel.extract_out_buffer());
     }
 
 private:
     shared_ptr<SenderDB> _db;
+    StringStreamChannel _channel;
 };
 
 PYBIND11_MODULE(pyapsi, m)
