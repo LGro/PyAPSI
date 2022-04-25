@@ -7,15 +7,27 @@ A `pybind11` based wrapper for [APSI](https://github.com/microsoft/apsi).
 **NOTE:** This is a very early implementation with a high probability of changing
 dramatically.
 
-At the current stage, this wraps the ZMQ based communication CLI example from the APSI
-repository and while it also exposes the individual steps of the APSI "advanced API",
-this is not fully working.
+## Building & Running
 
-## Build
+There are two ways to see PyAPSI in action, one is leveraging the provided Dockerfile,
+the other is setting up a Python environment and running example scripts oneself.
 
-At the moment only building under Linux is supported.
+### Dockerized
 
-Make sure to install `vcpkg` and APSI as specified in the APSI README.
+Given that Docker and docker-compose are available, the following will build PyAPSI and
+run an example script, showing its output in the terminal.
+
+```
+docker-compose build
+docker-compose run pyapsi
+```
+
+### Python
+
+Currently, only building under Linux is supported.
+
+Make sure to install `vcpkg` and APSI as specified in the
+[APSI README](https://github.com/microsoft/APSI/blob/main/README.md).
 Then set the environment variable `VCPKG_INSTALLED_DIR` to
 `/your/path/to/vcpkg/installed` install `poetry` and run
 
@@ -25,9 +37,13 @@ rm -rf build/
 poetry run pip install --verbose .
 ```
 
-## Run
+#### APSI Advanced API
 
-In two separate terminals, run `poetry run python server.py` and then
-`poetry run python client.py`.
+With `poetry run python examples/advanced.py` the wrapped APSI "advanced" API is
+demonstrated.
 
-For the advanced API example: `poetry run advanced.py`
+#### APSI ZMQ Example
+
+A wrapper example for APSI's "simple" API requires two separate terminals, where in one
+`poetry run python examples/server.py` is started and in the other
+`poetry run python examples/client.py`

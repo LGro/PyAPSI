@@ -10,9 +10,18 @@ RUN ./tmp/vcpkg/bootstrap-vcpkg.sh && \
 
 ENV VCPKG_INSTALLED_DIR=/tmp/vcpkg/installed
 
-COPY . /tmp/pyapsi
+RUN mkdir /tmp/pyapsi
+COPY ./setup.py /tmp/pyapsi/setup.py
+COPY ./pyproject.toml /tmp/pyapsi/pyproject.toml
+COPY ./poetry.lock /tmp/pyapsi/poetry.lock
+COPY ./src /tmp/pyapsi/src
+COPY ./examples /tmp/pyapsi/examples
 
-RUN cd /tmp/pyapsi && \
-    pip install poetry && \
+WORKDIR /tmp/pyapsi
+
+RUN pip install poetry && \
     poetry install && \
     poetry run pip install --verbose .
+
+#RUN poetry run python examples/advanced.py
+CMD ["poetry", "run", "python", "examples/advanced.py"]
