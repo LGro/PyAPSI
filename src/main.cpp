@@ -320,6 +320,8 @@ public:
 
     py::bytes handle_oprf_request(const string &oprf_request_string)
     {
+        _channel.set_in_buffer(oprf_request_string);
+
         OPRFRequest oprf_request2 = to_oprf_request(_channel.receive_operation(
             nullptr,
             network::SenderOperationType::sop_oprf));
