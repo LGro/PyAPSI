@@ -1,6 +1,6 @@
 import json
 
-from pyapsi import APSIClient, APSIServer, enable_logging
+from pyapsi import APSIClient, APSIServer, set_console_log_disabled, set_log_level
 
 if __name__ == "__main__":
     n_threads = 2
@@ -25,7 +25,8 @@ if __name__ == "__main__":
     nonce_byte_count = 16
     compressed = False
 
-    enable_logging()
+    set_console_log_disabled(False)
+    set_log_level("debug")
 
     server = APSIServer(n_threads)
     server.init_db(

@@ -79,10 +79,40 @@ void print_intersection_results(const vector<Item> &items, const vector<MatchRec
     }
 }
 
-void enable_logging()
+void set_log_level(const string &level)
 {
-    Log::SetConsoleDisabled(false);
-    Log::SetLogLevel(Log::Level::debug);
+    Log::Level ll;
+
+    if (level == "all" || level == "ALL")
+    {
+        ll = Log::Level::all;
+    }
+    else if (level == "debug" || level == "DEBUG")
+    {
+        ll = Log::Level::debug;
+    }
+    else if (level == "info" || level == "INFO")
+    {
+        ll = Log::Level::info;
+    }
+    else if (level == "warning" || level == "WARNING")
+    {
+        ll = Log::Level::warning;
+    }
+    else if (level == "error" || level == "ERROR")
+    {
+        ll = Log::Level::error;
+    }
+    else if (level == "off" || level == "OFF")
+    {
+        ll = Log::Level::off;
+    }
+    else
+    {
+        throw invalid_argument("unknown log level");
+    }
+
+    Log::SetLogLevel(ll);
 }
 
 /*
@@ -349,7 +379,12 @@ private:
 
 PYBIND11_MODULE(pyapsi, m)
 {
-    m.def("enable_logging", &enable_logging, "Enable APSI's stdout logging on the DEBUG level.");
+    m.def("set_log_level", &set_log_level,
+          "Set APSI log level.");
+    m.def("set_console_log_disabled", &Log::SetConsoleDisabled,
+          "Enable or disable standard out console logging.");
+    m.def("set_log_file", &Log::SetLogFile,
+          "Set file for APSI log output.");
 
     py::class_<APSIServer>(m, "APSIServer")
         .def(py::init<size_t>())
