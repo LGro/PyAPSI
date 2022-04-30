@@ -3,15 +3,15 @@ from glob import glob
 
 # Available at setup time due to pyproject.toml
 from pybind11.setup_helpers import Pybind11Extension
-from setuptools import setup
+from setuptools import setup, find_packages
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 vcpkg_installed_dir = os.environ["VCPKG_INSTALLED_DIR"]
 
 ext_modules = [
     Pybind11Extension(
-        "pyapsi",
+        "_pyapsi",
         sorted(glob("src/*.cpp")),
         define_macros=[
             ("VERSION_INFO", __version__),
@@ -33,13 +33,15 @@ ext_modules = [
 ]
 
 setup(
-    name="pyapsi",
+    name="apsi",
     version=__version__,
     author="Lukas Grossberger",
     author_email="code@grossberger.xyz",
     url="https://github.com/LGro/pyapsi",
-    description="Python wrapper for APSI",
+    description="Python wrapper for labeled and unlabeled asynchronous private set "
+    + "intersection.",
     long_description="",
+    packages=find_packages(),
     ext_modules=ext_modules,
     extras_require={"test": "pytest"},
     zip_safe=False,

@@ -285,15 +285,13 @@ private:
 class APSIServer
 {
 public:
-    APSIServer(size_t thread_count)
-    {
-        ThreadPoolMgr::SetThreadCount(thread_count);
-    }
+    APSIServer() {}
 
     void init_db(
         string &params_json, size_t label_byte_count,
         size_t nonce_byte_count, bool compressed)
     {
+        db_label_byte_count = label_byte_count;
         auto params = PSIParams::Load(params_json);
         _db = make_shared<SenderDB>(
             params, label_byte_count, nonce_byte_count, compressed);
@@ -310,6 +308,7 @@ public:
         }
         catch (const exception &e)
         {
+            // TODO: Raise exception
             cout << "Failed to save database: " << e.what() << endl;
         }
     }
@@ -326,6 +325,7 @@ public:
         }
         catch (const exception &e)
         {
+            // TODO: Raise exception
             cout << "Failed to load database: " << e.what() << endl;
         }
     }
@@ -372,37 +372,51 @@ public:
         return py::bytes(_channel.extract_out_buffer());
     }
 
+public:
+    size_t db_label_byte_count;
+
 private:
     shared_ptr<SenderDB> _db;
     StringStreamChannel _channel;
 };
 
-PYBIND11_MODULE(pyapsi, m)
+PYBIND11_MODULE(_pyapsi, m)
 {
-    m.def("set_log_level", &set_log_level,
-          "Set APSI log level.");
-    m.def("set_console_log_disabled", &Log::SetConsoleDisabled,
-          "Enable or disable standard out console logging.");
-    m.def("set_log_file", &Log::SetLogFile,
-          "Set file for APSI log output.");
+    py::module utils = m.def_submodule("utils", "APSI related utilities.");
+    utils.def("_set_log_level", &set_log_level,
+              "Set APSI log level.");
+    utils.def("_set_console_log_disabled", &Log::SetConsoleDisabled,
+              "Enable or disable standard out console logging.");
+    utils.def("_set_log_file", &Log::SetLogFile,
+              "Set file for APSI log output.");
+    utils.def("_set_thread_count", &ThreadPoolMgr::SetThreadCount,
+              "Set thread count for parallelization.");
+    utils.def("_get_thread_count", &ThreadPoolMgr::GetThreadCount,
+              "Get thread count for parallelization.");
 
-    py::class_<APSIServer>(m, "APSIServer")
-        .def(py::init<size_t>())
-        .def("init_db", &APSIServer::init_db)
-        .def("save_db", &APSIServer::save_db)
-        .def("load_db", &APSIServer::load_db)
-        .def("add_item", &APSIServer::add_item)
-        .def("run", &APSIServer::run)
-        .def("handle_oprf_request", &APSIServer::handle_oprf_request)
-        .def("handle_query", &APSIServer::handle_query);
-
-    py::class_<APSIClient>(m, "APSIClient")
+    py::module labeled = m.def_submodule("labeled", "All things labeled APSI.");
+    py::class_<APSIServer>(labeled, "APSIServer")
+        .def(py::init())
+        .def("_init_db", &APSIServer::init_db)
+        .def("_save_db", &APSIServer::save_db)
+        .def("_load_db", &APSIServer::load_db)
+        .def("_add_item", &APSIServer::add_item)
+        .def("_run", &APSIServer::run)
+        .def("_handle_oprf_request", &APSIServer::handle_oprf_request)
+        .def("_handle_query", &APSIServer::handle_query);
+    py::class_<APSIClient>(labeled, "APSIClient")
         .def(py::init<string &>())
-        .def("query", &APSIClient::query)
-        .def("oprf_request", &APSIClient::oprf_request)
-        .def("build_query", &APSIClient::build_query)
-        .def("extract_result_from_query_response",
+        .def("_query", &APSIClient::query)
+        .def("_oprf_request", &APSIClient::oprf_request)
+        .def("_build_query", &APSIClient::build_query)
+        .def("_extract_result_from_query_response",
              &APSIClient::extract_result_from_query_response);
+
+    // py::module unlabeled = m.def_submodule("unlabeled", "All things unlabeled APSI.");
+    // py::class_<APSIServer>(unlabeled, "APSIServer");
+    // // FIXME
+    // py::class_<APSIClient>(unlabeled, "APSIClient");
+    // // FIXME
 
 #ifdef VERSION_INFO
     m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
