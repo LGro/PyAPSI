@@ -44,7 +44,7 @@ def test_labeled_client_server_integration():
     server = LabeledServer()
     server.init_db(_get_params_json(), label_byte_count=10)
     server.add_item("item", "1234567890")
-    server.add_item("meti", "0987654321")
+    server.add_items([("meti", "0987654321"), ("time", "1010101010")])
     client = LabeledClient(_get_params_json())
     assert _query(client, server, "item") == {"item": "1234567890"}
     assert _query(client, server, "meti") == {"meti": "0987654321"}
@@ -55,7 +55,7 @@ def test_unlabeled_client_server_integration():
     server = UnlabeledServer()
     server.init_db(_get_params_json())
     server.add_item("item")
-    server.add_item("meti")
+    server.add_items(["meti", "time"])
     client = UnlabeledClient(_get_params_json())
     assert _query(client, server, "item") == ["item"]
     assert _query(client, server, "meti") == ["meti"]
