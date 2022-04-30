@@ -249,11 +249,9 @@ public:
         return py::bytes(_channel.extract_out_buffer());
     }
 
-    py::list extract_result_from_query_response(const string &query_response_string)
+    py::list extract_unlabeled_result_from_query_response(const string &query_response_string)
     {
         signal(SIGINT, sigint_handler);
-
-        py::list labels;
 
         _channel.set_in_buffer(query_response_string);
         QueryResponse query_response = to_query_response(_channel.receive_response());
@@ -267,9 +265,31 @@ public:
 
         vector<MatchRecord> query_result = _receiver.process_result(_label_keys, *_itt, rps);
 
+        py::list matches;
+        for (auto const &qr : query_result)
+            matches.append(qr.found);
+        return matches;
+    }
+
+    py::list extract_labeled_result_from_query_response(const string &query_response_string)
+    {
+        signal(SIGINT, sigint_handler);
+
+        _channel.set_in_buffer(query_response_string);
+        QueryResponse query_response = to_query_response(_channel.receive_response());
+        uint32_t package_count = query_response->package_count;
+
+        vector<ResultPart> rps;
+        while (package_count--)
+        {
+            rps.push_back(_channel.receive_result(_receiver.get_seal_context()));
+        }
+
+        vector<MatchRecord> query_result = _receiver.process_result(_label_keys, *_itt, rps);
+
+        py::list labels;
         for (auto const &qr : query_result)
             labels.append(qr.label.to_string());
-
         return labels;
     }
 
@@ -333,9 +353,15 @@ public:
     {
         Item item(input_item);
 
-        // TODO: does this need to match the label byte count?
-        vector<unsigned char> label(input_label.begin(), input_label.end());
-        _db->insert_or_assign(make_pair(item, label));
+        if (input_label.length() > 0)
+        {
+            vector<unsigned char> label(input_label.begin(), input_label.end());
+            _db->insert_or_assign(make_pair(item, label));
+        }
+        else
+        {
+            _db->insert_or_assign(item);
+        }
     }
 
     void run(int port)
@@ -394,8 +420,7 @@ PYBIND11_MODULE(_pyapsi, m)
     utils.def("_get_thread_count", &ThreadPoolMgr::GetThreadCount,
               "Get thread count for parallelization.");
 
-    py::module labeled = m.def_submodule("labeled", "All things labeled APSI.");
-    py::class_<APSIServer>(labeled, "APSIServer")
+    py::class_<APSIServer>(m, "APSIServer")
         .def(py::init())
         .def("_init_db", &APSIServer::init_db)
         .def("_save_db", &APSIServer::save_db)
@@ -404,19 +429,15 @@ PYBIND11_MODULE(_pyapsi, m)
         .def("_run", &APSIServer::run)
         .def("_handle_oprf_request", &APSIServer::handle_oprf_request)
         .def("_handle_query", &APSIServer::handle_query);
-    py::class_<APSIClient>(labeled, "APSIClient")
+    py::class_<APSIClient>(m, "APSIClient")
         .def(py::init<string &>())
         .def("_query", &APSIClient::query)
         .def("_oprf_request", &APSIClient::oprf_request)
         .def("_build_query", &APSIClient::build_query)
-        .def("_extract_result_from_query_response",
-             &APSIClient::extract_result_from_query_response);
-
-    // py::module unlabeled = m.def_submodule("unlabeled", "All things unlabeled APSI.");
-    // py::class_<APSIServer>(unlabeled, "APSIServer");
-    // // FIXME
-    // py::class_<APSIClient>(unlabeled, "APSIClient");
-    // // FIXME
+        .def("_extract_labeled_result_from_query_response",
+             &APSIClient::extract_labeled_result_from_query_response)
+        .def("_extract_unlabeled_result_from_query_response",
+             &APSIClient::extract_unlabeled_result_from_query_response);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

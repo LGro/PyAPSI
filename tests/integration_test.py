@@ -1,20 +1,25 @@
 import json
-from typing import Dict
+from typing import Dict, Union
 
-from apsi.labeled import Client, Server
+from apsi import UnlabeledClient, UnlabeledServer, LabeledServer, LabeledClient
 
 
-def _query(client: Client, server: Server, item: str) -> Dict[str, str]:
+def _query(
+    client: Union[UnlabeledClient, LabeledClient],
+    server: Union[UnlabeledServer, LabeledServer],
+    item: str,
+) -> Dict[str, str]:
     oprf_request = client.oprf_request(item)
     oprf_response = server.handle_oprf_request(oprf_request)
     query = client.build_query(oprf_response)
     response = server.handle_query(query)
-    result = client.extract_result_from_query_response(response)
+    result = client.extract_result(response)
     return result
 
 
-def test_client_server_integration():
-    params = json.dumps(
+# TODO: Transform into pytest fixture
+def _get_params_json() -> str:
+    return json.dumps(
         {
             "table_params": {
                 "hash_func_count": 3,
@@ -34,11 +39,24 @@ def test_client_server_integration():
         }
     )
 
-    server = Server()
-    server.init_db(params, label_byte_count=10)
+
+def test_labeled_client_server_integration():
+    server = LabeledServer()
+    server.init_db(_get_params_json(), label_byte_count=10)
     server.add_item("item", "1234567890")
     server.add_item("meti", "0987654321")
-    client = Client(params)
+    client = LabeledClient(_get_params_json())
     assert _query(client, server, "item") == {"item": "1234567890"}
     assert _query(client, server, "meti") == {"meti": "0987654321"}
     assert _query(client, server, "unknown") == {}
+
+
+def test_unlabeled_client_server_integration():
+    server = UnlabeledServer()
+    server.init_db(_get_params_json())
+    server.add_item("item")
+    server.add_item("meti")
+    client = UnlabeledClient(_get_params_json())
+    assert _query(client, server, "item") == ["item"]
+    assert _query(client, server, "meti") == ["meti"]
+    assert _query(client, server, "unknown") == []
