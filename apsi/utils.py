@@ -1,4 +1,10 @@
-from _pyapsi.utils import _set_thread_count, _get_thread_count
+from _pyapsi.utils import (
+    _set_thread_count,
+    _get_thread_count,
+    _set_log_level,
+    _set_console_log_disabled,
+    _set_log_file,
+)
 
 
 def set_thread_count(thread_count: int) -> None:
@@ -16,3 +22,12 @@ def set_thread_count(thread_count: int) -> None:
 def get_thread_count() -> int:
     """Get the currently specified thread count for parallelization in APSI."""
     return _get_thread_count()
+
+
+set_log_level = _set_log_level
+
+
+set_console_log_disabled = _set_console_log_disabled
+
+
+set_log_file = _set_log_file
