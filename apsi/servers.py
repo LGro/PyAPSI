@@ -8,10 +8,6 @@ from _pyapsi import APSIServer as _Server
 class _BaseServer(_Server):
     db_initialized: bool = False
 
-    @property
-    def label_length(self) -> int:
-        return self.db_label_byte_count
-
     def _requires_db(self):
         if not self.db_initialized:
             raise RuntimeError("Please initialize or load a database first.")
@@ -51,6 +47,12 @@ class LabeledServer(_BaseServer):
     `init_db` or load an existing one with `load_db`.
     """
 
+    @property
+    def max_label_length(self) -> int:
+        # Refers to what is initialized via max_label_length via the underlying C++
+        # implementation, assuring availability also for loaded databases
+        return self._db_label_byte_count
+
     def __init__(self):
         """Initialize a labeled APSI server."""
         super().__init__()
@@ -58,7 +60,7 @@ class LabeledServer(_BaseServer):
     def init_db(
         self,
         params_json: str,
-        label_length: int,
+        max_label_length: int,
         nonce_byte_count: int = 16,
         compressed: bool = False,
     ) -> None:
@@ -66,14 +68,13 @@ class LabeledServer(_BaseServer):
 
         Args:
             params_json: The JSON string representation of APSI/SEAL parameters
-            label_length: The label size in bytes
-                TODO: Clarify if that's the max label size or if they all need to be it
+            max_label_length: The maximum compatible label length for this server
             nonce_byte_count: The nonce size in bytes; For more details see
                 https://github.com/microsoft/apsi#label-encryption
             compressed: Reduces memory footprint of database but increases computational
                 demand
         """
-        self._init_db(params_json, label_length, nonce_byte_count, compressed)
+        self._init_db(params_json, max_label_length, nonce_byte_count, compressed)
         self.db_initialized = True
 
     def add_item(self, item: str, label: str) -> None:
@@ -84,6 +85,10 @@ class LabeledServer(_BaseServer):
         label.
         """
         self._requires_db()
+        if len(label) > self.max_label_length:
+            raise ValueError(
+                f"Label {label} exceeds maximum length {self.max_label_length}"
+            )
         self._add_item(item, label)
 
     def add_items(self, items_with_label: Iterable[Tuple[str, str]]) -> None:
@@ -94,7 +99,7 @@ class LabeledServer(_BaseServer):
         value is the label.
         """
         self._requires_db()
-        # TODO: Expose batch add in C++ PyAPSI
+        # TODO: Expose batch add in C++ PyAPSI; and add length checks accordingly
         for item, label in items_with_label:
             self.add_item(item=item, label=label)
 

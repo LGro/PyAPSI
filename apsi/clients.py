@@ -56,8 +56,13 @@ class LabeledClient(_BaseClient):
             Found items as keys where corresponding labels are values.
         """
         labels = self._extract_labeled_result_from_query_response(query_response)
+        # Labels are retrieved from a fixed size memory and can thus contain other data
+        # in case a specific label does not fill the full maximum label length.
+        # Accordingly, everything after the first '\x00' is cut off.
         found_items_with_labels = {
-            item: label for item, label in zip(self.queried_items, labels) if label
+            item: label.split("\x00", 1)[0]
+            for item, label in zip(self.queried_items, labels)
+            if label
         }
         return found_items_with_labels
 

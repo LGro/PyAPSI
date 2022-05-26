@@ -441,7 +441,8 @@ PYBIND11_MODULE(_pyapsi, m)
         .def("_add_unlabeled_items", &APSIServer::add_unlabeled_items)
         .def("_run", &APSIServer::run)
         .def("_handle_oprf_request", &APSIServer::handle_oprf_request)
-        .def("_handle_query", &APSIServer::handle_query);
+        .def("_handle_query", &APSIServer::handle_query)
+        .def_readwrite("_db_label_byte_count", &APSIServer::db_label_byte_count);
     py::class_<APSIClient>(m, "APSIClient")
         .def(py::init<string &>())
         .def("_query", &APSIClient::query)

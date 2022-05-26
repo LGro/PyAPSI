@@ -34,20 +34,18 @@ apsi_params = """
 """
 
 server = LabeledServer()
-server.init_db(apsi_params, label_length=10)
-server.add_items(
-    [("item", "1234567890"), ("meti", "0987654321"), ("time", "1010101010")]
-)
+server.init_db(apsi_params, max_label_length=10)
+server.add_items([("item", "1234567890"), ("abc", "123"), ("other", "my label")])
 
 client = LabeledClient(apsi_params)
 
-oprf_request = client.oprf_request(["item", "meti"])
+oprf_request = client.oprf_request(["item", "abc"])
 oprf_response = server.handle_oprf_request(oprf_request)
 query = client.build_query(oprf_response)
 response = server.handle_query(query)
 result = client.extract_result(response)
 
-assert result == {"item": "1234567890", "meti": "0987654321"}
+assert result == {"item": "1234567890", "abc": "123"}
 ```
 
 ## Building & Testing
