@@ -2,8 +2,8 @@
 
 [![Actions Status](https://github.com/LGro/PyAPSI/workflows/ci-cd-pipeline/badge.svg)](https://github.com/LGro/PyAPSI/actions)
 
-[APSI](https://github.com/microsoft/apsi) wrapped into a Python library with
-[pybind11](https://pybind11.readthedocs.io/).
+Python wrapper for labeled and unlabeled asynchronous private set intersection
+([APSI](https://github.com/microsoft/apsi)).
 
 ## Example
 
