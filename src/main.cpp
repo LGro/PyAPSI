@@ -350,6 +350,7 @@ public:
             cout << "Failed to load database: " << e.what() << endl;
         }
     }
+
     void add_item(const string &input_item, const string &input_label)
     {
         Item item(input_item);
@@ -364,6 +365,16 @@ public:
             _db->insert_or_assign(item);
         }
     }
+
+    void add_unlabeled_items(const py::list &input_items)
+    {
+        vector<Item> items;
+        for (py::handle item : input_items) {
+            items.push_back(item.cast<std::string>());
+        }
+        _db->insert_or_assign(items);
+    }
+
 
     void run(int port)
     {
@@ -427,6 +438,7 @@ PYBIND11_MODULE(_pyapsi, m)
         .def("_save_db", &APSIServer::save_db)
         .def("_load_db", &APSIServer::load_db)
         .def("_add_item", &APSIServer::add_item)
+        .def("_add_unlabeled_items", &APSIServer::add_unlabeled_items)
         .def("_run", &APSIServer::run)
         .def("_handle_oprf_request", &APSIServer::handle_oprf_request)
         .def("_handle_query", &APSIServer::handle_query);

@@ -1,6 +1,6 @@
 """(Un-)labeled APSI server implementations."""
 
-from typing import Iterable, Tuple
+from typing import Iterable, List, Tuple
 
 from _pyapsi import APSIServer as _Server
 
@@ -126,9 +126,7 @@ class UnlabeledServer(_BaseServer):
         self._requires_db()
         self._add_item(item, "")
 
-    def add_items(self, items: Iterable[str]) -> None:
+    def add_items(self, items: List[str]) -> None:
         """Add multiple items to the server so that a client can query them."""
         self._requires_db()
-        # TODO: Expose batch add in C++ PyAPSI
-        for item in items:
-            self.add_item(item)
+        self._add_unlabeled_items(items)
