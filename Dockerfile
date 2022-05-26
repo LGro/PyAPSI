@@ -1,8 +1,8 @@
-FROM python:3.9.12-slim-bullseye@sha256:ba3b77ddbc953cdb8d998b2052088d4af4b8805805e5b01975a05af4e19855ea
+FROM python:3.9.12-slim-bullseye
 
 RUN apt-get update -q && apt-get install -q -y build-essential tar curl zip unzip git pkg-config
 
-RUN git clone -b 2022.04.12 https://github.com/microsoft/vcpkg /tmp/vcpkg
+RUN git clone https://github.com/microsoft/vcpkg /tmp/vcpkg
 
 RUN ./tmp/vcpkg/bootstrap-vcpkg.sh && \
     export CXXFLAGS="$CXXFLAGS -fPIC" && \

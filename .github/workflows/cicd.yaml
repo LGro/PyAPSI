@@ -1,5 +1,7 @@
 name: ci-cd-pipeline
 
+# TODO: Once this works, run automatically every night to check compatibility with most recent toolchain
+
 on: [push]
 jobs:
   setup:
