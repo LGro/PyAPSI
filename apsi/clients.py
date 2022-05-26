@@ -20,6 +20,9 @@ class _BaseClient(_Client):
         """Build a query based on the server's response to an initial OPRF request.
 
         This is the second step when querying for items.
+
+        Raises:
+            RuntimeError: If `oprf_request` was not called before.
         """
         if not self.queried_items:
             raise RuntimeError("You need to create an OPRF request first.")
