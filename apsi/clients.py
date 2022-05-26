@@ -8,14 +8,13 @@ from _pyapsi import APSIClient as _Client
 class _BaseClient(_Client):
     queried_items: List[str]
 
-    def oprf_request(self, item: str) -> bytes:
+    def oprf_request(self, items: List[str]) -> bytes:
         """Create an OPRF request for a given item.
 
         This is the first step when querying a server for items.
         """
-        # TODO: Switch to a request multi with items: List[str]
-        self.queried_items = (item,)
-        return self._oprf_request(item)
+        self.queried_items = items
+        return self._oprf_request(items)
 
     def build_query(self, oprf_response: bytes) -> bytes:
         """Build a query based on the server's response to an initial OPRF request.

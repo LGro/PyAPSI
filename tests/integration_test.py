@@ -1,15 +1,15 @@
 import json
-from typing import Dict, Union
+from typing import Dict, List, Union
 
-from apsi import UnlabeledClient, UnlabeledServer, LabeledServer, LabeledClient
+from apsi import LabeledClient, LabeledServer, UnlabeledClient, UnlabeledServer
 
 
 def _query(
     client: Union[UnlabeledClient, LabeledClient],
     server: Union[UnlabeledServer, LabeledServer],
-    item: str,
+    items: List[str],
 ) -> Dict[str, str]:
-    oprf_request = client.oprf_request(item)
+    oprf_request = client.oprf_request(items)
     oprf_response = server.handle_oprf_request(oprf_request)
     query = client.build_query(oprf_response)
     response = server.handle_query(query)
@@ -46,9 +46,12 @@ def test_labeled_client_server_integration():
     server.add_item("item", "1234567890")
     server.add_items([("meti", "0987654321"), ("time", "1010101010")])
     client = LabeledClient(_get_params_json())
-    assert _query(client, server, "item") == {"item": "1234567890"}
-    assert _query(client, server, "meti") == {"meti": "0987654321"}
-    assert _query(client, server, "unknown") == {}
+    assert _query(client, server, ["item"]) == {"item": "1234567890"}
+    assert _query(client, server, ["item", "meti", "unknown"]) == {
+        "item": "1234567890",
+        "meti": "0987654321",
+    }
+    assert _query(client, server, ["unknown"]) == {}
 
 
 def test_unlabeled_client_server_integration():
@@ -57,6 +60,6 @@ def test_unlabeled_client_server_integration():
     server.add_item("item")
     server.add_items(["meti", "time"])
     client = UnlabeledClient(_get_params_json())
-    assert _query(client, server, "item") == ["item"]
-    assert _query(client, server, "meti") == ["meti"]
-    assert _query(client, server, "unknown") == []
+    assert _query(client, server, ["item"]) == ["item"]
+    assert _query(client, server, ["item", "meti", "unknown"]) == ["item", "meti"]
+    assert _query(client, server, ["unknown"]) == []

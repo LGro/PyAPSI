@@ -222,11 +222,12 @@ public:
         return 0;
     }
 
-    py::bytes oprf_request(const string &input_item)
+    py::bytes oprf_request(const py::list &input_items)
     {
-        Item item(input_item);
         vector<Item> receiver_items;
-        receiver_items.push_back(item);
+        for (py::handle item : input_items) {
+            receiver_items.push_back(item.cast<std::string>());
+        }
 
         _oprf_receiver = Receiver::CreateOPRFReceiver(receiver_items);
         Request request = Receiver::CreateOPRFRequest(_oprf_receiver);
