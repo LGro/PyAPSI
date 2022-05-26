@@ -1,3 +1,5 @@
+"""Utility functions for multi threading and logging."""
+
 from _pyapsi.utils import (
     _set_thread_count,
     _get_thread_count,
@@ -8,8 +10,9 @@ from _pyapsi.utils import (
 
 
 def set_thread_count(thread_count: int) -> None:
-    """Set the global APSI thread count, which allows parallelization of some
-    operations to improve the runtime performance.
+    """Set the global APSI thread count.
+
+    Allows parallelization of some operations to improve the runtime performance.
     """
     if thread_count < 1 or not isinstance(thread_count, int):
         raise ValueError(

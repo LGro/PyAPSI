@@ -13,6 +13,12 @@ pybind11 = "^2.9.2"
 black = "^22.3.0"
 isort = "^5.10.1"
 pytest = "^7.1.2"
+pydocstyle = "^6.1.1"
+toml = "^0.10.2"
+
+[tool.pydocstyle]
+match-dir = "apsi"
+convention = "google"
 
 [build-system]
 requires = [

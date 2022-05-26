@@ -1,3 +1,5 @@
+"""Setuptools integration of C++ APSI and Python package."""
+
 import os
 from glob import glob
 
