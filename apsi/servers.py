@@ -9,7 +9,7 @@ class _BaseServer(_Server):
     db_initialized: bool = False
 
     @property
-    def label_byte_count(self) -> int:
+    def label_length(self) -> int:
         return self.db_label_byte_count
 
     def _requires_db(self):
@@ -58,7 +58,7 @@ class LabeledServer(_BaseServer):
     def init_db(
         self,
         params_json: str,
-        label_byte_count: int,
+        label_length: int,
         nonce_byte_count: int = 16,
         compressed: bool = False,
     ) -> None:
@@ -66,14 +66,14 @@ class LabeledServer(_BaseServer):
 
         Args:
             params_json: The JSON string representation of APSI/SEAL parameters
-            label_byte_count: The label size in bytes
+            label_length: The label size in bytes
                 TODO: Clarify if that's the max label size or if they all need to be it
             nonce_byte_count: The nonce size in bytes; For more details see
                 https://github.com/microsoft/apsi#label-encryption
             compressed: Reduces memory footprint of database but increases computational
                 demand
         """
-        self._init_db(params_json, label_byte_count, nonce_byte_count, compressed)
+        self._init_db(params_json, label_length, nonce_byte_count, compressed)
         self.db_initialized = True
 
     def add_item(self, item: str, label: str) -> None:

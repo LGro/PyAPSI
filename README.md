@@ -34,7 +34,7 @@ apsi_params = """
 """
 
 server = LabeledServer()
-server.init_db(apsi_params, label_byte_count=10)
+server.init_db(apsi_params, label_length=10)
 server.add_items(
     [("item", "1234567890"), ("meti", "0987654321"), ("time", "1010101010")]
 )

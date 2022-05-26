@@ -42,7 +42,7 @@ def _get_params_json() -> str:
 
 def test_labeled_client_server_integration():
     server = LabeledServer()
-    server.init_db(_get_params_json(), label_byte_count=10)
+    server.init_db(_get_params_json(), label_length=10)
     server.add_item("item", "1234567890")
     server.add_items([("meti", "0987654321"), ("time", "1010101010")])
     client = LabeledClient(_get_params_json())
