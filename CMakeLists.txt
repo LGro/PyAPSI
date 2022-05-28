@@ -13,12 +13,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-find_package(APSI CONFIG REQUIRED)
+add_subdirectory(external/apsi/)
 
 pybind11_add_module(_pyapsi src/main.cpp)
 
-set_target_properties(_pyapsi PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
-
-target_link_libraries(_pyapsi PRIVATE pybind11::module APSI::apsi)
+target_link_libraries(_pyapsi PRIVATE pybind11::module apsi)
 
 target_compile_definitions(_pyapsi PRIVATE)
