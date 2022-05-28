@@ -19,7 +19,9 @@ RUN git clone https://github.com/microsoft/apsi /tmp/pyapsi/external/apsi
 RUN sed -i "s/-D_AVX2_/-D_AVX_/g" /tmp/pyapsi/external/apsi/CMakeLists.txt
 RUN sed -i "s/_AVX2.S/.S/g" /tmp/pyapsi/external/apsi/common/apsi/fourq/amd64/CMakeLists.txt
 
-RUN poetry install && \
-    poetry run pip install --verbose .
+RUN poetry install
+RUN poetry run pip install --verbose .
+
+RUN poetry run python setup.py bdist_wheel
 
 CMD ["poetry", "run", "pytest", "tests"]

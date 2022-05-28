@@ -1,10 +1,11 @@
 name: ci-cd-pipeline
 
-# TODO: Once this works, run automatically every night to check compatibility with most recent toolchain
-
-on: [push]
+on:
+  push:
+  schedule:
+    - cron: "0 1 * * 4"
 jobs:
-  setup:
+  ci-cd:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -12,3 +13,10 @@ jobs:
         run: docker-compose build
       - name: Test
         run: docker-compose run test
+      - name: Extract wheel
+        run: docker run --rm --entrypoint cat pyapsi:dev /tmp/pyapsi/dist/apsi-0.1.0-cp39-cp39-linux_x86_64.whl > apsi-0.1.0-cp39-cp39-linux_x86_64.whl
+      - name: Archive wheel
+        uses: actions/upload-artifact@v3
+        with:
+          name: apsi-0.1.0-cp39-cp39-linux_x86_64.whl
+          path: apsi-0.1.0-cp39-cp39-linux_x86_64.whl
