@@ -5,7 +5,7 @@ description = "Python wrapper for APSI"
 authors = ["Lukas Grossberger <code@grossberger.xyz>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.9,<3.10"
 pyzmq = "^22.3.0"
 pybind11 = "^2.9.2"
 
