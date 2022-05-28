@@ -57,7 +57,14 @@ run tests.
 
 ```
 docker-compose build
-docker-compose run pyapsi
+docker-compose run test
+```
+
+You can extract the wheel file as follows (adjust the version as needed):
+
+```
+docker run --rm --entrypoint cat pyapsi:dev \
+    /tmp/pyapsi/dist/apsi-0.1.0-cp39-cp39-linux_x86_64.whl > apsi-0.1.0-cp39-cp39-linux_x86_64.whl
 ```
 
 ### Python
