@@ -1,5 +1,5 @@
 services:
-  pyapsi:
+  test:
     build:
       context: ./
       dockerfile: Dockerfile

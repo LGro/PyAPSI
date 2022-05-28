@@ -38,15 +38,15 @@
 #include <pybind11/pybind11.h>
 
 // APSI
-#include "apsi/log.h"
-#include "apsi/zmq/sender_dispatcher.h"
-#include "apsi/receiver.h"
-#include "apsi/sender.h"
-#include "apsi/item.h"
-#include "apsi/network/stream_channel.h"
-#include "apsi/psi_params.h"
-#include "apsi/sender_db.h"
-#include "apsi/thread_pool_mgr.h"
+#include <apsi/item.h>
+#include <apsi/log.h>
+#include <apsi/zmq/sender_dispatcher.h>
+#include <apsi/receiver.h>
+#include <apsi/sender.h>
+#include <apsi/network/stream_channel.h>
+#include <apsi/psi_params.h>
+#include <apsi/sender_db.h>
+#include <apsi/thread_pool_mgr.h>
 
 using namespace std;
 using namespace apsi;
@@ -222,6 +222,7 @@ public:
         return 0;
     }
 
+    // TODO: use std::vector<str> in conjunction with "#include <pybind11/stl.h>" for auto conversion
     py::bytes oprf_request(const py::list &input_items)
     {
         vector<Item> receiver_items;
@@ -442,6 +443,7 @@ PYBIND11_MODULE(_pyapsi, m)
         .def("_run", &APSIServer::run)
         .def("_handle_oprf_request", &APSIServer::handle_oprf_request)
         .def("_handle_query", &APSIServer::handle_query)
+        // TODO: use def_property_readonly instead
         .def_readwrite("_db_label_byte_count", &APSIServer::db_label_byte_count);
     py::class_<APSIClient>(m, "APSIClient")
         .def(py::init<string &>())
