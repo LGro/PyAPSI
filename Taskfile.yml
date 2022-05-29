@@ -1,0 +1,35 @@
+version: "3"
+
+vars:
+  PYAPSI_VERSION:
+    sh: poetry version -s
+
+tasks:
+  base:
+    cmds:
+      - docker build -f docker/base.Dockerfile -t pyapsi:base .
+
+  build:
+    deps: [base]
+    vars:
+      PYTHON_VERSION_SLUG:
+        sh: echo "$(echo '{{.PYTHON_VERSION}}' | cut -d'.' -f1)$(echo '{{.PYTHON_VERSION}}' | cut -d'.' -f2)"
+    cmds:
+      - docker build --build-arg PYTHON_VERSION={{.PYTHON_VERSION}} -f docker/py.Dockerfile -t pyapsi:py{{.PYTHON_VERSION_SLUG}} .
+
+  test:
+    deps: [build]
+    vars:
+      PYTHON_VERSION_SLUG:
+        sh: echo "$(echo '{{.PYTHON_VERSION}}' | cut -d'.' -f1)$(echo '{{.PYTHON_VERSION}}' | cut -d'.' -f2)"
+    cmds:
+      - docker run pyapsi:py{{.PYTHON_VERSION_SLUG}}
+
+  wheel:
+    deps: [test]
+    vars:
+      PYTHON_VERSION_SLUG:
+        sh: echo "$(echo '{{.PYTHON_VERSION}}' | cut -d'.' -f1)$(echo '{{.PYTHON_VERSION}}' | cut -d'.' -f2)"
+      WHEEL_FILE: apsi-{{.PYAPSI_VERSION}}-cp{{.PYTHON_VERSION_SLUG}}-cp{{.PYTHON_VERSION_SLUG}}-linux_x86_64.whl
+    cmds:
+      - docker run --rm --entrypoint cat pyapsi:py{{.PYTHON_VERSION_SLUG}} /tmp/pyapsi/dist/{{.WHEEL_FILE}} > {{.WHEEL_FILE}}

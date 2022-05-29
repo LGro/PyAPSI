@@ -8,15 +8,17 @@ jobs:
   ci-cd:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Build
-        run: docker-compose build
-      - name: Test
-        run: docker-compose run test
-      - name: Extract wheel
-        run: docker run --rm --entrypoint cat pyapsi:dev /tmp/pyapsi/dist/apsi-0.1.0-cp39-cp39-linux_x86_64.whl > apsi-0.1.0-cp39-cp39-linux_x86_64.whl
-      - name: Archive wheel
+      - uses: actions/checkout@v3
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+      - name: Install Task
+        uses: arduino/setup-task@v1
+      - name: Python 3.8
+        run: task wheel PYTHON_VERSION=3.8.13
+      - name: Python 3.9
+        run: task wheel PYTHON_VERSION=3.9.13
+      - name: Archive wheels
         uses: actions/upload-artifact@v3
         with:
-          name: apsi-0.1.0-cp39-cp39-linux_x86_64.whl
-          path: apsi-0.1.0-cp39-cp39-linux_x86_64.whl
+          name: wheels
+          path: apsi-*-linux_x86_64.whl

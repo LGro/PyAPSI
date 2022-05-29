@@ -50,40 +50,16 @@ assert result == {"item": "1234567890", "abc": "123"}
 
 ## Building & Testing
 
-### Dockerized
+Before you start, make sure that [Taskfile](https://taskfile.dev/#/installation),
+[Docker](https://docs.docker.com/engine/install/) and
+[Poetry](https://python-poetry.org/docs/#installation) are installed.
 
-Given that Docker and docker-compose are available, the following will build PyAPSI and
-run tests.
-
-```
-docker-compose build
-docker-compose run test
-```
-
-You can extract the wheel file as follows (adjust the version as needed):
+You can then run a full build with tests that will generate a wheel file in the
+repository root as follows:
 
 ```
-docker run --rm --entrypoint cat pyapsi:dev \
-    /tmp/pyapsi/dist/apsi-0.1.0-cp39-cp39-linux_x86_64.whl > apsi-0.1.0-cp39-cp39-linux_x86_64.whl
+task wheel PYTHON_VERSION=3.8.13
 ```
 
-### Python
-
-Currently, only building under Linux is supported.
-
-Make sure to install `vcpkg` and APSI as specified in the
-[APSI README](https://github.com/microsoft/APSI/blob/main/README.md).
-Then set the environment variable `VCPKG_INSTALLED_DIR` to
-`/your/path/to/vcpkg/installed` install `poetry` and run
-
-```
-poetry install
-rm -rf build/
-poetry run pip install --verbose .
-```
-
-You can then run the tests with
-
-```
-poetry run pytest tests/
-```
+NOTE: Only Python 3.8 and 3.9, and patch versions for which official Python Docker
+images exist are supported.

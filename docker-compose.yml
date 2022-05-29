@@ -1,6 +1,0 @@
-services:
-  test:
-    build:
-      context: ./
-      dockerfile: Dockerfile
-    image: pyapsi:dev

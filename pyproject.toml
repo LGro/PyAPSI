@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "pyapsi"
-version = "0.0.1"
+version = "0.1.0"
 description = "Python wrapper for APSI"
 authors = ["Lukas Grossberger <code@grossberger.xyz>"]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.10"
+python = ">=3.8,<3.10"
 pyzmq = "^22.3.0"
 pybind11 = "^2.9.2"
 
@@ -15,6 +15,7 @@ isort = "^5.10.1"
 pytest = "^7.1.2"
 pydocstyle = "^6.1.1"
 toml = "^0.10.2"
+build = "^0.8.0"
 
 [tool.pydocstyle]
 match-dir = "apsi"
