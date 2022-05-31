@@ -68,6 +68,9 @@ result = client.extract_result(response)
 assert result == {"item": "1234567890", "abc": "123"}
 ```
 
+To control multi threading and logging in `APSI` see
+[`apsi.utils`](https://github.com/LGro/PyAPSI/blob/main/apsi/utils.py).
+
 ## Building & Testing
 
 ### Docker
