@@ -49,7 +49,7 @@ import sys
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 # Convert distutils Windows platform specifiers to CMake -A arguments
@@ -117,7 +117,6 @@ class CMakeBuild(build_ext):
                     pass
 
         else:
-
             # Single config generators are handled "normally"
             single_config = any(x in cmake_generator for x in {"NMake", "Ninja"})
 
@@ -168,11 +167,24 @@ setup(
     url="https://github.com/LGro/PyAPSI",
     description="Python wrapper for labeled and unlabeled asynchronous private set "
     + "intersection (APSI).",
-    long_description="",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
     packages=find_packages(),
     ext_modules=[CMakeExtension("_pyapsi")],
     cmdclass={"build_ext": CMakeBuild},
     extras_require={"test": "pytest"},
     zip_safe=False,
     python_requires=">=3.8,<3.10",
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "Topic :: Utilities",
+        "License :: OSI Approved :: MIT License",
+        "Natural Language :: English",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Typing :: Typed",
+    ],
 )
