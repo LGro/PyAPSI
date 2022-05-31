@@ -16,6 +16,7 @@ pytest = "^7.1.2"
 pydocstyle = "^6.1.1"
 toml = "^0.10.2"
 build = "^0.8.0"
+auditwheel = "^5.1.2"
 
 [tool.pydocstyle]
 match-dir = "apsi"
@@ -28,7 +29,3 @@ requires = [
     "pybind11>=2.8.0",
 ]
 build-backend = "setuptools.build_meta"
-
-[tool.cibuildwheel]
-test-command = "python {project}/tests/test.py"
-test-skip = "*universal2:arm64"

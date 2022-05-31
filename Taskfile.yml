@@ -30,6 +30,7 @@ tasks:
     vars:
       PYTHON_VERSION_SLUG:
         sh: echo "$(echo '{{.PYTHON_VERSION}}' | cut -d'.' -f1)$(echo '{{.PYTHON_VERSION}}' | cut -d'.' -f2)"
-      WHEEL_FILE: apsi-{{.PYAPSI_VERSION}}-cp{{.PYTHON_VERSION_SLUG}}-cp{{.PYTHON_VERSION_SLUG}}-linux_x86_64.whl
+      WHEEL_FILE: apsi-{{.PYAPSI_VERSION}}-cp{{.PYTHON_VERSION_SLUG}}-cp{{.PYTHON_VERSION_SLUG}}-manylinux_2_31_x86_64.whl
     cmds:
-      - docker run --rm --entrypoint cat pyapsi:py{{.PYTHON_VERSION_SLUG}} /tmp/pyapsi/dist/{{.WHEEL_FILE}} > {{.WHEEL_FILE}}
+      - mkdir -p ./dist
+      - docker run --rm --entrypoint cat pyapsi:py{{.PYTHON_VERSION_SLUG}} /tmp/pyapsi/wheelhouse/{{.WHEEL_FILE}} > ./dist/{{.WHEEL_FILE}}

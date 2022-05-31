@@ -2,8 +2,8 @@ name: ci-cd-pipeline
 
 on:
   push:
-  schedule:
-    - cron: "0 1 * * 4"
+  # schedule:
+  #   - cron: "0 1 * * 4"
 jobs:
   ci-cd:
     runs-on: ubuntu-latest
@@ -21,4 +21,9 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: wheels
-          path: apsi-*-linux_x86_64.whl
+          path: dist/*
+      - name: Publish to PyPI
+        # if: startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
