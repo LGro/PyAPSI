@@ -6,10 +6,11 @@ RUN apt-get update -q && apt-get install -q -y build-essential git cmake patchel
 RUN mkdir /tmp/vcpkg
 COPY --from=pyapsi:base /tmp/vcpkg /tmp/vcpkg
 
-RUN mkdir /tmp/pyapsi
-COPY --from=pyapsi:base /tmp/pyapsi /tmp/pyapsi
-
 ENV VCPKG_ROOT_DIR=/tmp/vcpkg
+
+RUN mkdir -p /tmp/pyapsi/external
+COPY ./ /tmp/pyapsi
+COPY --from=pyapsi:base /tmp/apsi /tmp/pyapsi/external/apsi
 
 WORKDIR /tmp/pyapsi
 
