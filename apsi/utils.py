@@ -9,6 +9,9 @@ from _pyapsi.utils import (
 )
 
 
+VALID_LOG_LEVELS = ["ALL", "DEBUG", "INFO", "WARNING", "ERROR", "OFF"]
+
+
 def set_thread_count(thread_count: int) -> None:
     """Set the global APSI thread count.
 
@@ -27,10 +30,30 @@ def get_thread_count() -> int:
     return _get_thread_count()
 
 
-set_log_level = _set_log_level
+def set_log_level(level: str) -> None:
+    """Set APSI log level.
+
+    Args:
+        level: One of "ALL", "DEBUG", "INFO", "WARNING", "ERROR", "OFF"
+
+    Raises:
+        ValueError: In case an invalid log level is provided
+    """
+    if level not in VALID_LOG_LEVELS:
+        raise ValueError(f"Invalid log level {level}, choose one of {VALID_LOG_LEVELS}")
+    _set_log_level(level)
 
 
-set_console_log_disabled = _set_console_log_disabled
+def enable_console_log() -> None:
+    """Enable APSI logging to standard output."""
+    _set_console_log_disabled(False)
 
 
-set_log_file = _set_log_file
+def disable_console_log() -> None:
+    """Disable APSI logging to standard output."""
+    _set_console_log_disabled(True)
+
+
+def set_log_file(file_path: str) -> None:
+    """Set file path to which APSI log output should be written."""
+    _set_log_file(file_path)

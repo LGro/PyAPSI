@@ -18,36 +18,13 @@ def _query(
     return result
 
 
-# TODO: Transform into pytest fixture
-def _get_params_json() -> str:
-    return json.dumps(
-        {
-            "table_params": {
-                "hash_func_count": 3,
-                "table_size": 512,
-                "max_items_per_bin": 92,
-            },
-            "item_params": {"felts_per_item": 8},
-            "query_params": {
-                "ps_low_degree": 0,
-                "query_powers": [1, 3, 4, 5, 8, 14, 20, 26, 32, 38, 41, 42, 43, 45, 46],
-            },
-            "seal_params": {
-                "plain_modulus": 40961,
-                "poly_modulus_degree": 4096,
-                "coeff_modulus_bits": [40, 32, 32],
-            },
-        }
-    )
-
-
-def test_labeled_client_server_integration():
+def test_labeled_client_server_integration(apsi_params: str):
     server = LabeledServer()
-    server.init_db(_get_params_json(), max_label_length=10)
+    server.init_db(apsi_params, max_label_length=10)
     server.add_item("item", "1234567890")
     server.add_items([("meti", "0987654321"), ("time", "1010101010")])
 
-    client = LabeledClient(_get_params_json())
+    client = LabeledClient(apsi_params)
 
     assert _query(client, server, ["item"]) == {"item": "1234567890"}
     assert _query(client, server, ["item", "meti", "unknown"]) == {
@@ -57,21 +34,21 @@ def test_labeled_client_server_integration():
     assert _query(client, server, ["unknown"]) == {}
 
 
-def test_labeled_client_server_integration_with_shorter_labels():
+def test_labeled_client_server_integration_with_shorter_labels(apsi_params: str):
     server = LabeledServer()
-    server.init_db(_get_params_json(), max_label_length=10)
+    server.init_db(apsi_params, max_label_length=10)
     server.add_item("long_item", "1234567890")
     server.add_item("short_item", "321")
 
-    client = LabeledClient(_get_params_json())
+    client = LabeledClient(apsi_params)
 
     result = _query(client, server, ["long_item", "short_item"])
     assert result == {"long_item": "1234567890", "short_item": "321"}
 
 
-def test_adding_too_long_label_to_labeled_server_raises_error():
+def test_adding_too_long_label_to_labeled_server_raises_error(apsi_params: str):
     server = LabeledServer()
-    server.init_db(_get_params_json(), max_label_length=4)
+    server.init_db(apsi_params, max_label_length=4)
 
     server.add_item("item1", "1234")
 
@@ -82,13 +59,13 @@ def test_adding_too_long_label_to_labeled_server_raises_error():
         server.add_items([("item2", "12345")])
 
 
-def test_unlabeled_client_server_integration():
+def test_unlabeled_client_server_integration(apsi_params: str):
     server = UnlabeledServer()
-    server.init_db(_get_params_json())
+    server.init_db(apsi_params)
     server.add_item("item")
     server.add_items(["meti", "time"])
 
-    client = UnlabeledClient(_get_params_json())
+    client = UnlabeledClient(apsi_params)
 
     assert _query(client, server, ["item"]) == ["item"]
     assert _query(client, server, ["item", "meti", "unknown"]) == ["item", "meti"]
@@ -96,7 +73,7 @@ def test_unlabeled_client_server_integration():
 
 
 def test_readme_example():
-    from apsi import LabeledServer, LabeledClient
+    from apsi import LabeledClient, LabeledServer
 
     apsi_params = """
     {
