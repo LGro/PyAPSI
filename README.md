@@ -22,6 +22,12 @@ You can check the system library versions that are required to be
 `manylinux_2_31_x86_64` compatible in the
 [auditwheel policy](https://github.com/pypa/auditwheel/blob/main/src/auditwheel/policy/manylinux-policy.json#L335-L340).
 
+NOTE: While AVX2 supported is currently patched out
+([#11](https://github.com/LGro/PyAPSI/issues/11)), APSI and its dependencies still seem
+to choose optimizations during build time depending on the available CPU flags, which
+can cause incompatibility of the pre-built wheels on older CPUs beyond what `auditwheel`
+can identify ([#13](https://github.com/LGro/PyAPSI/issues/13)).
+
 In case you feel like contributing a build setup for Windows and OSX compatible wheels
 or extend the "From Source" section below, I would be happy to review your pull request.
 
