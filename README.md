@@ -83,10 +83,10 @@ You can then run a full build with tests that will generate a wheel file in `dis
 follows:
 
 ```
-task wheel PYTHON_VERSION=3.9.13
+task wheel PYTHON_VERSION=3.10.4
 ```
 
-Note: Only Python 3.8 and 3.9, and patch versions for which
+Note: Only Python 3.8, 3.9, 3.10, and their patch versions for which
 [official Python Docker images](https://hub.docker.com/_/python) exist are supported.
 
 ### From Source

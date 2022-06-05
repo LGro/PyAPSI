@@ -17,6 +17,8 @@ jobs:
         run: task wheel PYTHON_VERSION=3.8.13
       - name: Python 3.9
         run: task wheel PYTHON_VERSION=3.9.13
+      - name: Python 3.10
+        run: task wheel PYTHON_VERSION=3.10.4
       - name: Archive wheels
         uses: actions/upload-artifact@v3
         with:

@@ -49,7 +49,7 @@ import sys
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 
 # Convert distutils Windows platform specifiers to CMake -A arguments
@@ -174,7 +174,7 @@ setup(
     cmdclass={"build_ext": CMakeBuild},
     extras_require={"test": "pytest"},
     zip_safe=False,
-    python_requires=">=3.8,<3.10",
+    python_requires=">=3.8,<3.11",
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -185,6 +185,7 @@ setup(
         "Programming Language :: Python :: 3 :: Only",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Typing :: Typed",
     ],
 )

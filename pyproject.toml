@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "pyapsi"
-version = "0.1.1"
+version = "0.1.2"
 description = "Python wrapper for APSI"
 authors = ["Lukas Grossberger <code@grossberger.xyz>"]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.10"
+python = ">=3.8,<3.11"
 pyzmq = "^22.3.0"
 pybind11 = "^2.9.2"
 
