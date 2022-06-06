@@ -240,8 +240,7 @@ public:
         }
         catch (const exception &e)
         {
-            // TODO: Raise exception
-            cout << "Failed to save database: " << e.what() << endl;
+            throw runtime_error("Failed saving database");
         }
     }
 
@@ -257,8 +256,7 @@ public:
         }
         catch (const exception &e)
         {
-            // TODO: Raise exception
-            cout << "Failed to load database: " << e.what() << endl;
+            throw runtime_error("Failed loading database");
         }
     }
 

@@ -1,6 +1,7 @@
 """(Un-)labeled APSI server implementations."""
 
 from typing import Iterable, List, Tuple
+from pathlib import Path
 
 from _pyapsi import APSIServer as _Server
 
@@ -15,10 +16,19 @@ class _BaseServer(_Server):
     def save_db(self, db_file_path: str) -> None:
         """Save the database in unencrypted binary representation at the given path."""
         self._requires_db()
+
+        p = Path(db_file_path)
+        if not p.parent.exists():
+            raise FileNotFoundError(f"Save directory does not exist: {p.parent}")
+
         self._save_db(db_file_path)
 
     def load_db(self, db_file_path: str) -> None:
         """Load a previously saved binary database representation into memory."""
+        p = Path(db_file_path)
+        if not p.exists():
+            raise FileNotFoundError(f"DB file does not exist: {p}")
+
         self._load_db(db_file_path)
         self.db_initialized = True
 

@@ -1,4 +1,5 @@
 import json
+import pathlib
 from typing import Dict, List, Union
 
 import pytest
@@ -70,6 +71,38 @@ def test_unlabeled_client_server_integration(apsi_params: str):
     assert _query(client, server, ["item"]) == ["item"]
     assert _query(client, server, ["item", "meti", "unknown"]) == ["item", "meti"]
     assert _query(client, server, ["unknown"]) == []
+
+
+def test_save_and_load_db(apsi_params: str, tmp_path: pathlib.Path):
+    db_file_path = str(tmp_path / "apsi.db")
+
+    orig_server = UnlabeledServer()
+    orig_server.init_db(apsi_params)
+    orig_server.add_item("item")
+    orig_server.save_db(db_file_path)
+
+    new_server = UnlabeledServer()
+    new_server.load_db(db_file_path)
+
+    client = UnlabeledClient(apsi_params)
+
+    assert _query(client, new_server, ["item", "unknown"]) == ["item"]
+
+
+def test_load_non_existent_db_fails():
+    server = UnlabeledServer()
+
+    with pytest.raises(FileNotFoundError):
+        server.load_db("/tmp/this/load/path/does/not/exist")
+
+
+def test_save_db_to_non_existent_path_fails(apsi_params: str):
+    server = UnlabeledServer()
+    server.init_db(apsi_params)
+    server.add_item("item")
+
+    with pytest.raises(FileNotFoundError):
+        server.save_db("/tmp/this/save/path/does/not/exist")
 
 
 def test_readme_example():
