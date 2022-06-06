@@ -40,7 +40,6 @@
 // APSI
 #include <apsi/item.h>
 #include <apsi/log.h>
-#include <apsi/zmq/sender_dispatcher.h>
 #include <apsi/receiver.h>
 #include <apsi/sender.h>
 #include <apsi/network/stream_channel.h>
@@ -61,22 +60,6 @@ namespace py = pybind11;
 void sigint_handler(int param [[maybe_unused]])
 {
     exit(0);
-}
-
-void print_intersection_results(const vector<Item> &items, const vector<MatchRecord> &intersection)
-{
-    for (size_t i = 0; i < intersection.size(); i++)
-    {
-        cout << "Processing intersection " << i << endl;
-        if (intersection[i].found)
-        {
-            cout << "Found!" << endl;
-            if (intersection[i].label)
-            {
-                cout << "Label: " << intersection[i].label.to_string() << endl;
-            }
-        }
-    }
 }
 
 void set_log_level(const string &level)
@@ -148,79 +131,6 @@ class APSIClient
 {
 public:
     APSIClient(string &params_json) : _receiver(PSIParams::Load(params_json)) {}
-
-    int query(const string &conn_addr, const string &input_item, size_t thread_count = 1)
-    {
-        signal(SIGINT, sigint_handler);
-
-        Item item(input_item);
-        vector<Item> recv_items;
-        recv_items.push_back(item);
-
-        // Connect to the network
-        network::ZMQReceiverChannel channel;
-
-        cout << "Connecting to " << conn_addr << endl;
-        channel.connect(conn_addr);
-        if (channel.is_connected())
-        {
-            cout << "Successfully connected to " << conn_addr << endl;
-        }
-        else
-        {
-            cout << "Failed to connect to " << conn_addr << endl;
-            return -1;
-        }
-
-        unique_ptr<PSIParams> params;
-        try
-        {
-            cout << "Sending parameter request" << endl;
-            params = make_unique<PSIParams>(Receiver::RequestParams(channel));
-            cout << "Received valid parameters" << endl;
-        }
-        catch (const exception &ex)
-        {
-            cout << "Failed to receive valid parameters: " << ex.what() << endl;
-            return -1;
-        }
-
-        ThreadPoolMgr::SetThreadCount(thread_count);
-        cout << "Setting thread count to " << ThreadPoolMgr::GetThreadCount() << endl;
-
-        Receiver receiver(*params);
-
-        vector<HashedItem> oprf_items;
-        vector<LabelKey> label_keys;
-        try
-        {
-            cout << "Sending OPRF request for " << recv_items.size() << " items" << endl;
-            tie(oprf_items, label_keys) = Receiver::RequestOPRF(recv_items, channel);
-            cout << "Received OPRF request" << endl;
-        }
-        catch (const exception &ex)
-        {
-            cout << "OPRF request failed: " << ex.what() << endl;
-            return -1;
-        }
-
-        vector<MatchRecord> query_result;
-        try
-        {
-            cout << "Sending APSI query" << endl;
-            query_result = receiver.request_query(oprf_items, label_keys, channel);
-            cout << "Received APSI query response" << endl;
-        }
-        catch (const exception &ex)
-        {
-            cout << "Failed sending APSI query: " << ex.what() << endl;
-            return -1;
-        }
-
-        print_intersection_results(recv_items, query_result);
-
-        return 0;
-    }
 
     // TODO: use std::vector<str> in conjunction with "#include <pybind11/stl.h>" for auto conversion
     py::bytes oprf_request(const py::list &input_items)
@@ -376,17 +286,6 @@ public:
         _db->insert_or_assign(items);
     }
 
-
-    void run(int port)
-    {
-        signal(SIGINT, sigint_handler);
-
-        atomic<bool> stop = false;
-        ZMQSenderDispatcher dispatcher(_db);
-
-        dispatcher.run(stop, port);
-    }
-
     py::bytes handle_oprf_request(const string &oprf_request_string)
     {
         _channel.set_in_buffer(oprf_request_string);
@@ -440,14 +339,12 @@ PYBIND11_MODULE(_pyapsi, m)
         .def("_load_db", &APSIServer::load_db)
         .def("_add_item", &APSIServer::add_item)
         .def("_add_unlabeled_items", &APSIServer::add_unlabeled_items)
-        .def("_run", &APSIServer::run)
         .def("_handle_oprf_request", &APSIServer::handle_oprf_request)
         .def("_handle_query", &APSIServer::handle_query)
         // TODO: use def_property_readonly instead
         .def_readwrite("_db_label_byte_count", &APSIServer::db_label_byte_count);
     py::class_<APSIClient>(m, "APSIClient")
         .def(py::init<string &>())
-        .def("_query", &APSIClient::query)
         .def("_oprf_request", &APSIClient::oprf_request)
         .def("_build_query", &APSIClient::build_query)
         .def("_extract_labeled_result_from_query_response",
