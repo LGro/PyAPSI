@@ -31,6 +31,17 @@ class _BaseServer(_Server):
 
         self._load_db(db_file_path)
         self.db_initialized = True
+    
+    def load_csv_db(self,csv_db_file_path:str, params_json:str,
+        nonce_byte_count: int = 16,
+        compressed: bool = False
+    ) -> None:
+        """Load a database from csv file."""
+        p = Path(csv_db_file_path)
+        if not p.exists():
+            raise FileNotFoundError(f"DB file does not exist: {p}")
+        self._load_csv_db(csv_db_file_path, params_json, nonce_byte_count, compressed)
+        self.db_initialized = True
 
     def handle_oprf_request(self, oprf_request: bytes) -> bytes:
         """Handle an initial APSI Client OPRF request.
