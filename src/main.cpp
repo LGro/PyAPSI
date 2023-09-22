@@ -298,6 +298,23 @@ public:
         _db->insert_or_assign(items);
     }
 
+    void add_labeled_items(const py::iterable &input_items_with_label)
+    {
+        vector<pair<Item,Label>> items_with_label;
+        for (py::handle handler : input_items_with_label){
+            py::tuple py_tup = handler.cast<py::tuple>();
+            if(py::len(py_tup)!=2){
+                throw runtime_error("data error, item_with_label should be a tuple with size 2.");
+            }
+            string label_str = py_tup[1].cast<string>();
+            items_with_label.push_back(make_pair(
+                    Item(py_tup[0].cast<string>()), 
+                    Label(label_str.begin(), label_str.end())
+            ));
+        }
+        _db->insert_or_assign(items_with_label);
+    }
+
     py::bytes handle_oprf_request(const string &oprf_request_string)
     {
         _channel.set_in_buffer(oprf_request_string);
@@ -352,6 +369,7 @@ PYBIND11_MODULE(_pyapsi, m)
         .def("_load_csv_db", &APSIServer::load_csv_db)
         .def("_add_item", &APSIServer::add_item)
         .def("_add_unlabeled_items", &APSIServer::add_unlabeled_items)
+        .def("_add_labeled_items", &APSIServer::add_labeled_items)
         .def("_handle_oprf_request", &APSIServer::handle_oprf_request)
         .def("_handle_query", &APSIServer::handle_query)
         // TODO: use def_property_readonly instead
