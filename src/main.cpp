@@ -46,6 +46,7 @@
 #include <apsi/psi_params.h>
 #include <apsi/sender_db.h>
 #include <apsi/thread_pool_mgr.h>
+#include "sender.h"
 
 using namespace std;
 using namespace apsi;
@@ -260,6 +261,19 @@ public:
         }
     }
 
+    void load_csv_db(const string &csv_db_file_path, const string &params_json, 
+                    size_t nonce_byte_count, bool compressed)
+    {
+        try
+        {
+            _db = try_load_csv_db(csv_db_file_path,params_json, nonce_byte_count, compressed);
+        }
+        catch(const exception &e)
+        {
+            throw runtime_error("Failed to load data from a CSV file.");
+        }    
+    }
+
     void add_item(const string &input_item, const string &input_label)
     {
         Item item(input_item);
@@ -282,6 +296,23 @@ public:
             items.push_back(item.cast<std::string>());
         }
         _db->insert_or_assign(items);
+    }
+
+    void add_labeled_items(const py::iterable &input_items_with_label)
+    {
+        vector<pair<Item,Label>> items_with_label;
+        for (py::handle handler : input_items_with_label){
+            py::tuple py_tup = handler.cast<py::tuple>();
+            if(py::len(py_tup)!=2){
+                throw runtime_error("data error, item_with_label should be a tuple with size 2.");
+            }
+            string label_str = py_tup[1].cast<string>();
+            items_with_label.push_back(make_pair(
+                    Item(py_tup[0].cast<string>()), 
+                    Label(label_str.begin(), label_str.end())
+            ));
+        }
+        _db->insert_or_assign(items_with_label);
     }
 
     py::bytes handle_oprf_request(const string &oprf_request_string)
@@ -335,8 +366,10 @@ PYBIND11_MODULE(_pyapsi, m)
         .def("_init_db", &APSIServer::init_db)
         .def("_save_db", &APSIServer::save_db)
         .def("_load_db", &APSIServer::load_db)
+        .def("_load_csv_db", &APSIServer::load_csv_db)
         .def("_add_item", &APSIServer::add_item)
         .def("_add_unlabeled_items", &APSIServer::add_unlabeled_items)
+        .def("_add_labeled_items", &APSIServer::add_labeled_items)
         .def("_handle_oprf_request", &APSIServer::handle_oprf_request)
         .def("_handle_query", &APSIServer::handle_query)
         // TODO: use def_property_readonly instead
