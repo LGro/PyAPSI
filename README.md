@@ -9,6 +9,11 @@
 Python wrapper for labeled and unlabeled asymmetric private set intersection
 ([APSI](https://github.com/microsoft/apsi)).
 
+**NOTE:** This repository is not actively maintained right now, since my focus has
+shifted away from APSI.
+The most valuable contribution would be to set up deploying tarballs to PyPI that are
+pip installable and build APSI locally to match the available platform extensions.
+
 ## Setup
 
 For `manylinux_2_31_x86_64` compatible platforms you can install `PyAPSI` from
