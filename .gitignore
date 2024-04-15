@@ -6,3 +6,4 @@ __pycache__/
 *.whl
 external/
 *.so
+.vscode/
