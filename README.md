@@ -28,6 +28,21 @@ The build automatically selects the best CPU optimizations for your machine.
 
 **Build time:** Approximately 5-15 minutes depending on your machine.
 
+## Performance Note
+
+On Linux x86_64, the FourQlib elliptic curve assembly optimizations are disabled
+because the hand-optimized AVX2 assembly files use non-PIC relocations that are
+incompatible with Python shared extensions (`.so` files). The generic C fallback is
+used instead, which results in approximately 2-3x slower OPRF (Oblivious Pseudorandom
+Function) operations.
+
+This does not affect the SEAL homomorphic encryption operations, which dominate runtime
+for typical set intersection sizes. On macOS and Windows, FourQlib uses different
+optimization paths that are not affected.
+
+For maximum performance on Linux, consider building APSI as a standalone static library
+outside of Python and using the native CLI tools.
+
 ## Example
 
 Example usage of the labeled APSI server and client.
