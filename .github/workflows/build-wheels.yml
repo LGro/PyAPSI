@@ -38,6 +38,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: sdist
@@ -50,9 +51,8 @@ jobs:
         run: pip install dist/*.tar.gz
       - name: Install test dependencies
         run: pip install pytest
-      - name: Run tests
-        run: |
-          python -c "from apsi import LabeledServer, LabeledClient; print('Import successful')"
+      - name: Run integration tests
+        run: pytest tests/
 
   publish:
     name: Publish to PyPI
