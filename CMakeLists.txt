@@ -9,11 +9,23 @@ include(FetchContent)
 FetchContent_Declare(
     pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11.git
-    GIT_TAG v2.9.2
+    GIT_TAG v2.13.6
 )
 FetchContent_MakeAvailable(pybind11)
 
-add_subdirectory(external/apsi/)
+file(READ external/apsi/CMakeLists.txt APSI_CMAKE_CONTENT)
+string(REPLACE "find_package(SEAL 4.1 QUIET REQUIRED)" "find_package(SEAL QUIET REQUIRED)" APSI_CMAKE_CONTENT "${APSI_CMAKE_CONTENT}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/apsi_patched/CMakeLists.txt" "${APSI_CMAKE_CONTENT}")
+
+file(GLOB APSI_SUBDIRS LIST_DIRECTORIES true external/apsi/*)
+foreach(SUBDIR ${APSI_SUBDIRS})
+    if(IS_DIRECTORY ${SUBDIR})
+        get_filename_component(DIRNAME ${SUBDIR} NAME)
+        file(COPY ${SUBDIR}/ DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/apsi_patched/${DIRNAME}/")
+    endif()
+endforeach()
+
+add_subdirectory("${CMAKE_CURRENT_BINARY_DIR}/apsi_patched/")
 
 pybind11_add_module(_pyapsi src/main.cpp)
 
