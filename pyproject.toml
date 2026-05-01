@@ -52,8 +52,7 @@ environment = "VCPKG_ROOT_DIR=/tmp/vcpkg"
 [tool.cibuildwheel.windows]
 archs = "AMD64"
 before-all = """
-    git clone https://github.com/microsoft/vcpkg C:\\vcpkg && \
-    C:\\vcpkg\\bootstrap-vcpkg.bat && \
+    if (!(Test-Path C:\\vcpkg\\vcpkg.exe)) { git clone https://github.com/microsoft/vcpkg C:\\vcpkg; C:\\vcpkg\\bootstrap-vcpkg.bat }
     C:\\vcpkg\\vcpkg install seal[no-throw-tran]:x64-windows-static kuku:x64-windows-static log4cplus:x64-windows-static cppzmq:x64-windows-static flatbuffers:x64-windows-static jsoncpp:x64-windows-static
     """
 environment = "VCPKG_ROOT_DIR=C:\\vcpkg"
