@@ -53,7 +53,7 @@ import zipfile
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 APSI_VERSION = "0.12.0"
 APSI_COMMIT = "b967a126b4e1c682b039afc2d76a98ea2c993230"
@@ -90,8 +90,26 @@ def _vcpkg_exists(vcpkg_dir):
     )
 
 
+def _get_vcpkg_triplet():
+    """Return the appropriate vcpkg triplet for the current platform."""
+    if sys.platform.startswith("win"):
+        return "x64-windows-static-md"
+    elif sys.platform.startswith("darwin"):
+        import platform
+        return "arm64-osx" if platform.machine() == "arm64" else "x64-osx"
+    return "x64-linux"
+
+
+def _vcpkg_deps_installed(vcpkg_dir, triplet):
+    """Check if vcpkg dependencies are installed for the given triplet."""
+    seal_config = os.path.join(
+        vcpkg_dir, "installed", triplet, "share", "seal", "SEALConfig.cmake"
+    )
+    return os.path.isfile(seal_config)
+
+
 def _bootstrap_vcpkg(vcpkg_dir):
-    """Download and bootstrap vcpkg."""
+    """Download and bootstrap vcpkg (without installing dependencies)."""
     print("Bootstrapping vcpkg...")
 
     if not os.path.isdir(vcpkg_dir):
@@ -136,7 +154,13 @@ def _bootstrap_vcpkg(vcpkg_dir):
 
     shutil.copy2(vcpkg_exec, vcpkg_target)
 
-    print("Installing APSI dependencies via vcpkg...")
+    print("vcpkg bootstrap complete.")
+    return extract_dir
+
+
+def _install_vcpkg_deps(vcpkg_src_dir, triplet):
+    """Install APSI dependencies via vcpkg for the given triplet."""
+    print(f"Installing APSI dependencies via vcpkg (triplet: {triplet})...")
     deps = [
         "seal[no-throw-tran]",
         "kuku",
@@ -145,17 +169,11 @@ def _bootstrap_vcpkg(vcpkg_dir):
         "flatbuffers",
         "jsoncpp",
     ]
+    vcpkg_exec = os.path.join(vcpkg_src_dir, "vcpkg")
     if sys.platform.startswith("win"):
-        triplet = "x64-windows-static-md"
-    elif sys.platform.startswith("darwin"):
-        import platform
-        triplet = "arm64-osx" if platform.machine() == "arm64" else "x64-osx"
-    else:
-        triplet = "x64-linux"
-    subprocess.check_call([vcpkg_exec, "install", "--triplet", triplet] + deps, cwd=extract_dir)
-
-    print("vcpkg bootstrap complete.")
-    return extract_dir
+        vcpkg_exec = os.path.join(vcpkg_src_dir, "vcpkg.exe")
+    subprocess.check_call([vcpkg_exec, "install", "--triplet", triplet] + deps, cwd=vcpkg_src_dir)
+    print("vcpkg dependency installation complete.")
 
 
 def _get_vcpkg_toolchain(vcpkg_src_dir):
@@ -216,6 +234,7 @@ class CMakeBuild(build_ext):
 
         vcpkg_dir = _get_vcpkg_dir()
         vcpkg_env = os.environ.get("VCPKG_ROOT_DIR")
+        triplet = _get_vcpkg_triplet()
 
         if vcpkg_env and _vcpkg_exists(vcpkg_env):
             if os.path.isdir(os.path.join(vcpkg_env, "scripts")):
@@ -232,19 +251,14 @@ class CMakeBuild(build_ext):
         else:
             vcpkg_src_dir = _bootstrap_vcpkg(vcpkg_dir)
 
-        toolchain = _get_vcpkg_toolchain(vcpkg_src_dir)
+        if not _vcpkg_deps_installed(vcpkg_dir, triplet):
+            _install_vcpkg_deps(vcpkg_src_dir, triplet)
 
-        if sys.platform.startswith("win"):
-            vcpkg_triplet = "x64-windows-static-md"
-        elif sys.platform.startswith("darwin"):
-            import platform
-            vcpkg_triplet = "arm64-osx" if platform.machine() == "arm64" else "x64-osx"
-        else:
-            vcpkg_triplet = "x64-linux"
+        toolchain = _get_vcpkg_toolchain(vcpkg_src_dir)
 
         cmake_args = [
             f"-DCMAKE_TOOLCHAIN_FILE={toolchain}",
-            f"-DVCPKG_TARGET_TRIPLET={vcpkg_triplet}",
+            f"-DVCPKG_TARGET_TRIPLET={triplet}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}",
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}",

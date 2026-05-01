@@ -12,6 +12,6 @@ global-exclude .github
 global-exclude docker
 global-exclude dist
 global-exclude build
-global-exclude _vcpkg
-global-exclude external
+prune _vcpkg
+prune external
 global-exclude *.egg-info
