@@ -5,7 +5,7 @@ description = "Python wrapper for APSI"
 authors = ["Lukas Grossberger <code@grossberger.xyz>"]
 
 [tool.poetry.dependencies]
-python = ">=3.8"
+python = ">=3.11"
 pybind11 = "^2.9.2"
 
 [poetry.group.dev.dependencies]
@@ -22,7 +22,7 @@ match-dir = "apsi"
 convention = "google"
 
 [tool.cibuildwheel]
-build = "cp38-* cp39-* cp310-* cp311-* cp312-*"
+build = "cp311-* cp312-* cp313-* cp314-*"
 skip = "*-musllinux_*"
 archs = "auto64"
 test-requires = "pytest"
