@@ -148,7 +148,8 @@ def _bootstrap_vcpkg(vcpkg_dir):
     if sys.platform.startswith("win"):
         triplet = "x64-windows-static-md"
     elif sys.platform.startswith("darwin"):
-        triplet = "x64-osx"
+        import platform
+        triplet = "arm64-osx" if platform.machine() == "arm64" else "x64-osx"
     else:
         triplet = "x64-linux"
     subprocess.check_call([vcpkg_exec, "install", "--triplet", triplet] + deps, cwd=extract_dir)
@@ -236,7 +237,8 @@ class CMakeBuild(build_ext):
         if sys.platform.startswith("win"):
             vcpkg_triplet = "x64-windows-static-md"
         elif sys.platform.startswith("darwin"):
-            vcpkg_triplet = "x64-osx"
+            import platform
+            vcpkg_triplet = "arm64-osx" if platform.machine() == "arm64" else "x64-osx"
         else:
             vcpkg_triplet = "x64-linux"
 
