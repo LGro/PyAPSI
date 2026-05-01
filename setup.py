@@ -97,7 +97,7 @@ def _bootstrap_vcpkg(vcpkg_dir):
     if not os.path.isdir(vcpkg_dir):
         os.makedirs(vcpkg_dir, exist_ok=True)
 
-    zip_url = f"https://github.com/microsoft/vcpkg/archive/refs/heads/master.zip"
+    zip_url = "https://github.com/microsoft/vcpkg/archive/refs/heads/master.zip"
     zip_path = os.path.join(vcpkg_dir, "vcpkg-src.zip")
 
     if not os.path.isfile(zip_path):
@@ -145,7 +145,13 @@ def _bootstrap_vcpkg(vcpkg_dir):
         "flatbuffers",
         "jsoncpp",
     ]
-    subprocess.check_call([vcpkg_exec, "install"] + deps, cwd=extract_dir)
+    if sys.platform.startswith("win"):
+        triplet = "x64-windows-static-md"
+    elif sys.platform.startswith("darwin"):
+        triplet = "x64-osx"
+    else:
+        triplet = "x64-linux"
+    subprocess.check_call([vcpkg_exec, "install", "--triplet", triplet] + deps, cwd=extract_dir)
 
     print("vcpkg bootstrap complete.")
     return extract_dir
@@ -227,8 +233,16 @@ class CMakeBuild(build_ext):
 
         toolchain = _get_vcpkg_toolchain(vcpkg_src_dir)
 
+        if sys.platform.startswith("win"):
+            vcpkg_triplet = "x64-windows-static-md"
+        elif sys.platform.startswith("darwin"):
+            vcpkg_triplet = "x64-osx"
+        else:
+            vcpkg_triplet = "x64-linux"
+
         cmake_args = [
             f"-DCMAKE_TOOLCHAIN_FILE={toolchain}",
+            f"-DVCPKG_TARGET_TRIPLET={vcpkg_triplet}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}",
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}",
