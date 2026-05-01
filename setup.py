@@ -56,6 +56,7 @@ from setuptools.command.build_ext import build_ext
 __version__ = "0.2.0"
 
 APSI_VERSION = "0.12.0"
+APSI_COMMIT = "b967a126b4e1c682b039afc2d76a98ea2c993230"
 
 PLAT_TO_CMAKE = {
     "win32": "Win32",
@@ -155,8 +156,8 @@ def _ensure_apsi_source():
     print("APSI source not found, downloading...")
     os.makedirs(os.path.dirname(apsi_dir), exist_ok=True)
 
-    tar_url = f"https://github.com/microsoft/APSI/archive/refs/tags/v{APSI_VERSION}.tar.gz"
-    tar_path = os.path.join(os.path.dirname(apsi_dir), f"apsi-{APSI_VERSION}.tar.gz")
+    tar_url = f"https://github.com/microsoft/APSI/archive/{APSI_COMMIT}.tar.gz"
+    tar_path = os.path.join(os.path.dirname(apsi_dir), f"apsi-{APSI_COMMIT}.tar.gz")
 
     if not os.path.isfile(tar_path):
         print(f"Downloading APSI {APSI_VERSION} from {tar_url}...")
@@ -166,7 +167,7 @@ def _ensure_apsi_source():
     with tarfile.open(tar_path, "r:gz") as tf:
         tf.extractall(path=os.path.dirname(apsi_dir))
 
-    extracted = os.path.join(os.path.dirname(apsi_dir), f"APSI-{APSI_VERSION}")
+    extracted = os.path.join(os.path.dirname(apsi_dir), f"APSI-{APSI_COMMIT}")
     if os.path.isdir(extracted):
         if os.path.isdir(apsi_dir):
             shutil.rmtree(apsi_dir)
