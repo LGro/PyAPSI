@@ -43,16 +43,17 @@ derivative works thereof, in binary and source code form.
 
 import os
 import re
+import shutil
 import subprocess
 import sys
+import urllib.request
+import zipfile
 
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
 
-__version__ = "0.1.2"
+__version__ = "0.2.0"
 
-
-# Convert distutils Windows platform specifiers to CMake -A arguments
 PLAT_TO_CMAKE = {
     "win32": "Win32",
     "win-amd64": "x64",
@@ -60,9 +61,85 @@ PLAT_TO_CMAKE = {
     "win-arm64": "ARM64",
 }
 
-# A CMakeExtension needs a sourcedir instead of a file list.
-# The name must be the _single_ output extension from the CMake build.
-# If you need multiple extensions, see scikit-build.
+
+def _get_vcpkg_dir():
+    """Return the directory where vcpkg should be installed."""
+    base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_vcpkg")
+    if sys.platform.startswith("darwin"):
+        return os.path.join(base, "macos")
+    elif sys.platform.startswith("linux"):
+        return os.path.join(base, "linux")
+    elif sys.platform.startswith("win"):
+        return os.path.join(base, "windows")
+    return base
+
+
+def _vcpkg_exists(vcpkg_dir):
+    """Check if vcpkg is already bootstrapped."""
+    src_dir = os.path.join(vcpkg_dir, "src")
+    if sys.platform.startswith("win"):
+        return os.path.isfile(os.path.join(src_dir, "vcpkg.exe")) or \
+               os.path.isfile(os.path.join(vcpkg_dir, "vcpkg.exe"))
+    return os.path.isfile(os.path.join(src_dir, "vcpkg")) or \
+           os.path.isfile(os.path.join(vcpkg_dir, "vcpkg"))
+
+
+def _bootstrap_vcpkg(vcpkg_dir):
+    """Download and bootstrap vcpkg."""
+    print("Bootstrapping vcpkg...")
+
+    if not os.path.isdir(vcpkg_dir):
+        os.makedirs(vcpkg_dir, exist_ok=True)
+
+    zip_url = f"https://github.com/microsoft/vcpkg/archive/refs/heads/master.zip"
+    zip_path = os.path.join(vcpkg_dir, "vcpkg-src.zip")
+
+    if not os.path.isfile(zip_path):
+        print(f"Downloading vcpkg from {zip_url}...")
+        urllib.request.urlretrieve(zip_url, zip_path)
+
+    extract_dir = os.path.join(vcpkg_dir, "src")
+    if not os.path.isdir(extract_dir):
+        print("Extracting vcpkg...")
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            zf.extractall(vcpkg_dir)
+        first_entry = os.listdir(vcpkg_dir)[0]
+        extracted = os.path.join(vcpkg_dir, first_entry)
+        if os.path.isdir(extracted):
+            if os.path.isdir(extract_dir):
+                shutil.rmtree(extract_dir)
+            shutil.move(extracted, extract_dir)
+
+    bootstrap_script = os.path.join(extract_dir, "bootstrap-vcpkg.sh")
+    if sys.platform.startswith("win"):
+        bootstrap_script = os.path.join(extract_dir, "bootstrap-vcpkg.bat")
+
+    print("Running vcpkg bootstrap...")
+    subprocess.check_call([bootstrap_script], cwd=extract_dir)
+
+    vcpkg_exec = os.path.join(extract_dir, "vcpkg")
+    if sys.platform.startswith("win"):
+        vcpkg_exec = os.path.join(extract_dir, "vcpkg.exe")
+
+    vcpkg_target = os.path.join(vcpkg_dir, "vcpkg")
+    if sys.platform.startswith("win"):
+        vcpkg_target += ".exe"
+
+    shutil.copy2(vcpkg_exec, vcpkg_target)
+
+    print("Installing APSI dependencies via vcpkg...")
+    deps = ["seal[no-throw-tran]", "kuku", "log4cplus", "cppzmq", "flatbuffers", "jsoncpp"]
+    subprocess.check_call([vcpkg_exec, "install"] + deps, cwd=extract_dir)
+
+    print("vcpkg bootstrap complete.")
+    return extract_dir
+
+
+def _get_vcpkg_toolchain(vcpkg_src_dir):
+    """Return the path to the vcpkg CMake toolchain file."""
+    return os.path.join(vcpkg_src_dir, "scripts/buildsystems/vcpkg.cmake")
+
+
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=""):
         Extension.__init__(self, name, sources=[])
@@ -73,37 +150,46 @@ class CMakeBuild(build_ext):
     def build_extension(self, ext):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
 
-        # required for auto-detection & inclusion of auxiliary "native" libs
         if not extdir.endswith(os.path.sep):
             extdir += os.path.sep
 
         debug = int(os.environ.get("DEBUG", 0)) if self.debug is None else self.debug
         cfg = "Debug" if debug else "Release"
 
-        # CMake lets you override the generator - we need to check this.
-        # Can be set with Conda-Build, for example.
         cmake_generator = os.environ.get("CMAKE_GENERATOR", "")
 
-        # Set Python_EXECUTABLE instead if you use PYBIND11_FINDPYTHON
-        vcpkgdir = os.environ.get("VCPKG_ROOT_DIR")
+        vcpkg_dir = _get_vcpkg_dir()
+        vcpkg_env = os.environ.get("VCPKG_ROOT_DIR")
+
+        if vcpkg_env and _vcpkg_exists(vcpkg_env):
+            if os.path.isdir(os.path.join(vcpkg_env, "scripts")):
+                vcpkg_src_dir = vcpkg_env
+            elif os.path.isdir(os.path.join(vcpkg_env, "src", "scripts")):
+                vcpkg_src_dir = os.path.join(vcpkg_env, "src")
+            else:
+                vcpkg_src_dir = vcpkg_env
+        elif _vcpkg_exists(vcpkg_dir):
+            if os.path.isdir(os.path.join(vcpkg_dir, "src", "scripts")):
+                vcpkg_src_dir = os.path.join(vcpkg_dir, "src")
+            else:
+                vcpkg_src_dir = vcpkg_dir
+        else:
+            vcpkg_src_dir = _bootstrap_vcpkg(vcpkg_dir)
+
+        toolchain = _get_vcpkg_toolchain(vcpkg_src_dir)
+
         cmake_args = [
-            f"-DCMAKE_TOOLCHAIN_FILE={vcpkgdir}/scripts/buildsystems/vcpkg.cmake",
-            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}",
+            f"-DCMAKE_TOOLCHAIN_FILE={toolchain}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
-            f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
+            f"-DCMAKE_BUILD_TYPE={cfg}",
+            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}",
         ]
         build_args = []
-        # Adding CMake arguments set as environment variable
-        # (needed e.g. to build for ARM OSx on conda-forge)
+
         if "CMAKE_ARGS" in os.environ:
             cmake_args += [item for item in os.environ["CMAKE_ARGS"].split(" ") if item]
 
         if self.compiler.compiler_type != "msvc":
-            # Using Ninja-build since it a) is available as a wheel and b)
-            # multithreads automatically. MSVC would require all variables be
-            # exported for Ninja to pick it up, which is a little tricky to do.
-            # Users can override the generator with CMAKE_GENERATOR in CMake
-            # 3.15+.
             if not cmake_generator or cmake_generator == "Ninja":
                 try:
                     import ninja  # noqa: F401
@@ -115,21 +201,11 @@ class CMakeBuild(build_ext):
                     ]
                 except ImportError:
                     pass
-
         else:
-            # Single config generators are handled "normally"
             single_config = any(x in cmake_generator for x in {"NMake", "Ninja"})
-
-            # CMake allows an arch-in-generator style for backward compatibility
             contains_arch = any(x in cmake_generator for x in {"ARM", "Win64"})
-
-            # Specify the arch if using MSVC generator, but only if it doesn't
-            # contain a backward-compatibility arch spec already in the
-            # generator name.
             if not single_config and not contains_arch:
                 cmake_args += ["-A", PLAT_TO_CMAKE[self.plat_name]]
-
-            # Multi-config generators have a different way to specify configs
             if not single_config:
                 cmake_args += [
                     f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{cfg.upper()}={extdir}"
@@ -137,18 +213,12 @@ class CMakeBuild(build_ext):
                 build_args += ["--config", cfg]
 
         if sys.platform.startswith("darwin"):
-            # Cross-compile support for macOS - respect ARCHFLAGS if set
             archs = re.findall(r"-arch (\S+)", os.environ.get("ARCHFLAGS", ""))
             if archs:
                 cmake_args += ["-DCMAKE_OSX_ARCHITECTURES={}".format(";".join(archs))]
 
-        # Set CMAKE_BUILD_PARALLEL_LEVEL to control the parallel build level
-        # across all generators.
         if "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ:
-            # self.parallel is a Python 3 only way to set parallel jobs by hand
-            # using -j in the build_ext call, not supported by pip or PyPA-build.
             if hasattr(self, "parallel") and self.parallel:
-                # CMake 3.12+ only.
                 build_args += [f"-j{self.parallel}"]
 
         build_temp = os.path.join(self.build_temp, ext.name)
@@ -174,7 +244,7 @@ setup(
     cmdclass={"build_ext": CMakeBuild},
     extras_require={"test": "pytest"},
     zip_safe=False,
-    python_requires=">=3.8,<3.11",
+    python_requires=">=3.8",
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -182,10 +252,14 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Natural Language :: English",
         "Operating System :: POSIX :: Linux",
+        "Operating System :: MacOS :: MacOS X",
+        "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3 :: Only",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Typing :: Typed",
     ],
 )

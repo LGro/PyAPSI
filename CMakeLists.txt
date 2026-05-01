@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.13.4)
 
 project(_pyapsi)
 
-include(FetchContent)
-
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+include(FetchContent)
 
 FetchContent_Declare(
     pybind11
@@ -20,3 +20,10 @@ pybind11_add_module(_pyapsi src/main.cpp)
 target_link_libraries(_pyapsi PRIVATE pybind11::module apsi)
 
 target_compile_definitions(_pyapsi PRIVATE)
+
+if(APPLE)
+    set_target_properties(_pyapsi PROPERTIES
+        CXX_VISIBILITY_PRESET "hidden"
+        VISIBILITY_INLINES_HIDDEN ON
+    )
+endif()

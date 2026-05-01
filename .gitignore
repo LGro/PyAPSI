@@ -1,8 +1,14 @@
-build
+build/
+dist/
 *.egg-info/
 *.bin
 .venv/
 __pycache__/
 *.whl
-external/
+external/*
+!external/apsi/
 *.so
+*.pyd
+*.dylib
+wheelhouse/
+_vcpkg/

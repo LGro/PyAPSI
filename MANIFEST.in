@@ -1,0 +1,16 @@
+recursive-include src *.cpp *.h *.hpp
+recursive-include apsi *.py *.typed
+include CMakeLists.txt
+include setup.py
+include pyproject.toml
+include README.md
+include LICENSE
+global-exclude *.py[cod]
+global-exclude __pycache__
+global-exclude .git
+global-exclude .github
+global-exclude docker
+global-exclude dist
+global-exclude build
+global-exclude _vcpkg
+global-exclude *.egg-info

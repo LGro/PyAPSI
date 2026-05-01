@@ -1,40 +1,44 @@
 # PyAPSI
 
-[![Actions Status](https://github.com/LGro/PyAPSI/workflows/ci-cd-pipeline/badge.svg)](https://github.com/LGro/PyAPSI/actions)
+[![Actions Status](https://github.com/LGro/PyAPSI/workflows/Build%20Wheels%20and%20sdist/badge.svg)](https://github.com/LGro/PyAPSI/actions)
 [![PyPI - Wheel](https://img.shields.io/pypi/wheel/apsi)](https://pypi.org/project/apsi/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/apsi)](https://pypi.org/project/apsi/)
 [![License: MIT](https://img.shields.io/github/license/LGro/PyAPSI)](https://github.com/LGro/PyAPSI/blob/main/LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Python wrapper for labeled and unlabeled asymmetric private set intersection
+Python wrapper for labeled and unlabeled asynchronous private set intersection
 ([APSI](https://github.com/microsoft/apsi)).
 
-**NOTE:** This repository is not actively maintained right now, since my focus has
-shifted away from APSI.
-The most valuable contribution would be to set up deploying tarballs to PyPI that are
-pip installable and build APSI locally to match the available platform extensions.
+## Installation
 
-## Setup
+### From PyPI (pre-built wheel)
 
-For `manylinux_2_31_x86_64` compatible platforms you can install `PyAPSI` from
-[PyPi](https://pypi.org/project/apsi/) with
-
-```
+```bash
 pip install apsi
 ```
 
-You can check the system library versions that are required to be
-`manylinux_2_31_x86_64` compatible in the
-[auditwheel policy](https://github.com/pypa/auditwheel/blob/main/src/auditwheel/policy/manylinux-policy.json#L335-L340).
+Pre-built wheels are available for:
+- **Linux**: x86_64 (manylinux_2_28)
+- **macOS**: x86_64 (Intel) and arm64 (Apple Silicon)
+- **Windows**: x86_64
 
-NOTE: While AVX2 supported is currently patched out
-([#11](https://github.com/LGro/PyAPSI/issues/11)), APSI and its dependencies still seem
-to choose optimizations during build time depending on the available CPU flags, which
-can cause incompatibility of the pre-built wheels on older CPUs beyond what `auditwheel`
-can identify ([#13](https://github.com/LGro/PyAPSI/issues/13)).
+These wheels are built with conservative CPU flags (`-march=x86-64 -mtune=generic`) for maximum compatibility across different CPU generations. This means they may not use AVX2/AVX-512 optimizations even if your CPU supports them.
 
-In case you feel like contributing a build setup for Windows and OSX compatible wheels
-or extend the "From Source" section below, I would be happy to review your pull request.
+### From source (optimized for your CPU)
+
+To build with native CPU optimizations (AVX2, AVX-512, etc.):
+
+```bash
+pip install apsi --no-binary apsi
+```
+
+This compiles APSI and all dependencies from source, automatically selecting the best optimizations for your CPU. Build time is approximately 5-15 minutes.
+
+**Requirements:**
+- C++ compiler (GCC >= 9, Clang >= 10, or MSVC >= 2019)
+- CMake >= 3.13.4
+- Python >= 3.8
+- Internet access (dependencies are fetched during build)
 
 ## Example
 
@@ -84,25 +88,27 @@ To control multi threading and logging in `APSI` see
 
 ## Building & Testing
 
-### Docker
-
-Before you start, make sure that [Taskfile](https://taskfile.dev/#/installation),
-[Docker](https://docs.docker.com/engine/install/) and
-[Poetry](https://python-poetry.org/docs/#installation) are installed.
-
-You can then run a full build with tests that will generate a wheel file in `dist/` as
-follows:
-
-```
-task wheel PYTHON_VERSION=3.10.4
-```
-
-Note: Only Python 3.8, 3.9, 3.10, and their patch versions for which
-[official Python Docker images](https://hub.docker.com/_/python) exist are supported.
-
 ### From Source
 
-Please have a look at the files inside
-[`docker/`](https://github.com/LGro/PyAPSI/tree/main/docker) for the required `vcpkg`
-setup and `apsi` AVX2 patch, in case you'd like to build from source in a custom
-environment.
+```bash
+pip install -e .
+pytest tests/
+```
+
+### Building a Wheel Locally
+
+```bash
+pip install build cibuildwheel
+cibuildwheel --platform linux --output-dir wheelhouse
+```
+
+### Building a Source Distribution
+
+```bash
+pip install build
+python -m build --sdist
+```
+
+## Supported Python Versions
+
+Python 3.8, 3.9, 3.10, 3.11, 3.12

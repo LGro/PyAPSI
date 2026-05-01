@@ -1,25 +1,62 @@
 [tool.poetry]
 name = "pyapsi"
-version = "0.1.2"
+version = "0.2.0"
 description = "Python wrapper for APSI"
 authors = ["Lukas Grossberger <code@grossberger.xyz>"]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.11"
+python = ">=3.8"
 pybind11 = "^2.9.2"
 
-[tool.poetry.dev-dependencies]
+[poetry.group.dev.dependencies]
 black = "^22.3.0"
 isort = "^5.10.1"
 pytest = "^7.1.2"
 pydocstyle = "^6.1.1"
 toml = "^0.10.2"
 build = "^0.8.0"
-auditwheel = "^5.1.2"
+cibuildwheel = "^2.16"
 
 [tool.pydocstyle]
 match-dir = "apsi"
 convention = "google"
+
+[tool.cibuildwheel]
+build = "cp38-* cp39-* cp310-* cp311-* cp312-*"
+skip = "*-musllinux_*"
+archs = "auto64"
+test-requires = "pytest"
+test-command = "pytest {project}/tests"
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+before-all = """
+    yum install -y git zip && \
+    git clone https://github.com/microsoft/vcpkg /opt/vcpkg && \
+    /opt/vcpkg/bootstrap-vcpkg.sh && \
+    /opt/vcpkg/vcpkg install seal[no-throw-tran]:x64-linux kuku:x64-linux log4cplus:x64-linux cppzmq:x64-linux flatbuffers:x64-linux jsoncpp:x64-linux
+    """
+environment = "VCPKG_ROOT_DIR=/opt/vcpkg"
+
+[tool.cibuildwheel.macos]
+archs = "x86_64 arm64"
+before-all = """
+    brew install git && \
+    git clone https://github.com/microsoft/vcpkg /opt/vcpkg && \
+    /opt/vcpkg/bootstrap-vcpkg.sh && \
+    /opt/vcpkg/vcpkg install seal[no-throw-tran] kuku log4cplus cppzmq flatbuffers jsoncpp
+    """
+environment = "VCPKG_ROOT_DIR=/opt/vcpkg"
+
+[tool.cibuildwheel.windows]
+archs = "AMD64"
+before-all = """
+    git clone https://github.com/microsoft/vcpkg C:\\vcpkg && \
+    C:\\vcpkg\\bootstrap-vcpkg.bat && \
+    C:\\vcpkg\\vcpkg install seal[no-throw-tran]:x64-windows-static kuku:x64-windows-static log4cplus:x64-windows-static cppzmq:x64-windows-static flatbuffers:x64-windows-static jsoncpp:x64-windows-static
+    """
+environment = "VCPKG_ROOT_DIR=C:\\vcpkg"
 
 [build-system]
 requires = [
