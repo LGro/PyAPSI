@@ -1,4 +1,4 @@
-name: Build Wheels and sdist
+name: Build and publish sdist
 
 on:
   push:
@@ -31,41 +31,34 @@ jobs:
           name: sdist
           path: dist/*.tar.gz
 
-  build_wheels:
-    name: Build wheels on ${{ matrix.os }}
+  test_sdist_install:
+    name: Test sdist install on ${{ matrix.os }}
+    needs: build_sdist
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-13, macos-14, windows-latest]
-
+        os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
-          submodules: recursive
-
-      - uses: actions/setup-python@v5
+          name: sdist
+          path: dist
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-
-      - name: Install cibuildwheel
-        run: pip install cibuildwheel
-
-      - name: Build wheels
-        run: cibuildwheel --output-dir wheelhouse
-        env:
-          CIBW_ARCHS_LINUX: x86_64
-          CIBW_ARCHS_MACOS: x86_64 arm64
-          CIBW_ARCHS_WINDOWS: AMD64
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wheels-${{ matrix.os }}
-          path: wheelhouse/*.whl
+          python-version: '3.14'
+      - name: Install from sdist
+        run: pip install dist/*.tar.gz
+      - name: Install test dependencies
+        run: pip install pytest
+      - name: Run tests
+        run: |
+          python -c "from apsi import LabeledServer, LabeledClient; print('Import successful')"
 
   publish:
     name: Publish to PyPI
-    needs: [build_sdist, build_wheels]
+    needs: [build_sdist, test_sdist_install]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
     permissions:
@@ -73,13 +66,6 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: wheels-*
-          merge-multiple: true
-          path: dist
-
-      - uses: actions/download-artifact@v4
-        with:
           name: sdist
           path: dist
-
       - uses: pypa/gh-action-pypi-publish@release/v1
