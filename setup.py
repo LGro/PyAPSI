@@ -114,6 +114,9 @@ def _bootstrap_vcpkg(vcpkg_dir):
     if sys.platform.startswith("win"):
         bootstrap_script = os.path.join(extract_dir, "bootstrap-vcpkg.bat")
 
+    if not sys.platform.startswith("win"):
+        os.chmod(bootstrap_script, 0o755)
+
     print("Running vcpkg bootstrap...")
     subprocess.check_call([bootstrap_script], cwd=extract_dir)
 
