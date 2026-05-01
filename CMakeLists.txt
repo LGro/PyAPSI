@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.13.4)
 project(_pyapsi)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -fPIC")
 
 include(FetchContent)
 
