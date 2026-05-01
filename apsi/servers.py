@@ -51,7 +51,7 @@ class _BaseServer(_Server):
 
 
 class LabeledServer(_BaseServer):
-    """A server for labeled asynchronous private set intersection (APSI).
+    """A server for labeled asymmetric private set intersection (APSI).
 
     For this server to do something meaningful, initialize an empty database with
     `init_db` or load an existing one with `load_db`.
@@ -115,7 +115,7 @@ class LabeledServer(_BaseServer):
 
 
 class UnlabeledServer(_BaseServer):
-    """A server for unlabeled asynchronous private set intersection (APSI).
+    """A server for unlabeled asymmetric private set intersection (APSI).
 
     For this server to do something meaningful, initialize an empty database with
     `init_db` or load an existing one with `load_db`.

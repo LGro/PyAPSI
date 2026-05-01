@@ -31,7 +31,7 @@ class _BaseClient(_Client):
 
 
 class LabeledClient(_BaseClient):
-    """A client for labeled asynchronous private set intersection (APSI).
+    """A client for labeled asymmetric private set intersection (APSI).
 
     For a complete query, use the client interface in the following order:
         1. `oprf_request`
@@ -68,7 +68,7 @@ class LabeledClient(_BaseClient):
 
 
 class UnlabeledClient(_BaseClient):
-    """A client for unlabeled asynchronous private set intersection (APSI).
+    """A client for unlabeled asymmetric private set intersection (APSI).
 
     For a complete query, use the client interface in the following order:
         1. `oprf_request`

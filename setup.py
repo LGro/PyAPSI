@@ -82,10 +82,12 @@ def _vcpkg_exists(vcpkg_dir):
     """Check if vcpkg is already bootstrapped."""
     src_dir = os.path.join(vcpkg_dir, "src")
     if sys.platform.startswith("win"):
-        return os.path.isfile(os.path.join(src_dir, "vcpkg.exe")) or \
-               os.path.isfile(os.path.join(vcpkg_dir, "vcpkg.exe"))
-    return os.path.isfile(os.path.join(src_dir, "vcpkg")) or \
-           os.path.isfile(os.path.join(vcpkg_dir, "vcpkg"))
+        return os.path.isfile(os.path.join(src_dir, "vcpkg.exe")) or os.path.isfile(
+            os.path.join(vcpkg_dir, "vcpkg.exe")
+        )
+    return os.path.isfile(os.path.join(src_dir, "vcpkg")) or os.path.isfile(
+        os.path.join(vcpkg_dir, "vcpkg")
+    )
 
 
 def _bootstrap_vcpkg(vcpkg_dir):
@@ -135,7 +137,14 @@ def _bootstrap_vcpkg(vcpkg_dir):
     shutil.copy2(vcpkg_exec, vcpkg_target)
 
     print("Installing APSI dependencies via vcpkg...")
-    deps = ["seal[no-throw-tran]", "kuku", "log4cplus", "cppzmq", "flatbuffers", "jsoncpp"]
+    deps = [
+        "seal[no-throw-tran]",
+        "kuku",
+        "log4cplus",
+        "cppzmq",
+        "flatbuffers",
+        "jsoncpp",
+    ]
     subprocess.check_call([vcpkg_exec, "install"] + deps, cwd=extract_dir)
 
     print("vcpkg bootstrap complete.")
@@ -149,7 +158,9 @@ def _get_vcpkg_toolchain(vcpkg_src_dir):
 
 def _ensure_apsi_source():
     """Download APSI source if not present (for sdist installs)."""
-    apsi_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "external", "apsi")
+    apsi_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "external", "apsi"
+    )
     if os.path.isdir(os.path.join(apsi_dir, "CMakeLists.txt")):
         return
 
@@ -273,7 +284,7 @@ setup(
     author="Lukas Grossberger",
     author_email="code@grossberger.xyz",
     url="https://github.com/LGro/PyAPSI",
-    description="Python wrapper for labeled and unlabeled asynchronous private set "
+    description="Python wrapper for labeled and unlabeled asymmetric private set "
     + "intersection (APSI).",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -293,9 +304,6 @@ setup(
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
-        "Programming Language :: Python :: 3.13",
         "Programming Language :: Python :: 3.14",
         "Typing :: Typed",
     ],

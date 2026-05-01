@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/github/license/LGro/PyAPSI)](https://github.com/LGro/PyAPSI/blob/main/LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Python wrapper for labeled and unlabeled asynchronous private set intersection
+Python wrapper for labeled and unlabeled asymmetric private set intersection
 ([APSI](https://github.com/microsoft/apsi)).
 
 ## Installation
@@ -104,7 +104,3 @@ pytest tests/
 pip install build
 python -m build --sdist
 ```
-
-## Supported Python Versions
-
-Python 3.11, 3.12, 3.13, 3.14
