@@ -5,8 +5,7 @@ dist/
 .venv/
 __pycache__/
 *.whl
-external/*
-!external/apsi/
+external/
 *.so
 *.pyd
 *.dylib

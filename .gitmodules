@@ -1,3 +1,0 @@
-[submodule "external/apsi"]
-	path = external/apsi
-	url = https://github.com/microsoft/APSI.git

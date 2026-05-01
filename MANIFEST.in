@@ -13,4 +13,5 @@ global-exclude docker
 global-exclude dist
 global-exclude build
 global-exclude _vcpkg
+global-exclude external
 global-exclude *.egg-info

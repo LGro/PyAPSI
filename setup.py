@@ -46,6 +46,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import urllib.request
 import zipfile
 
@@ -53,6 +54,8 @@ from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
 
 __version__ = "0.2.0"
+
+APSI_VERSION = "0.12.0"
 
 PLAT_TO_CMAKE = {
     "win32": "Win32",
@@ -143,6 +146,35 @@ def _get_vcpkg_toolchain(vcpkg_src_dir):
     return os.path.join(vcpkg_src_dir, "scripts/buildsystems/vcpkg.cmake")
 
 
+def _ensure_apsi_source():
+    """Download APSI source if not present (for sdist installs)."""
+    apsi_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "external", "apsi")
+    if os.path.isdir(os.path.join(apsi_dir, "CMakeLists.txt")):
+        return
+
+    print("APSI source not found, downloading...")
+    os.makedirs(os.path.dirname(apsi_dir), exist_ok=True)
+
+    tar_url = f"https://github.com/microsoft/APSI/archive/refs/tags/v{APSI_VERSION}.tar.gz"
+    tar_path = os.path.join(os.path.dirname(apsi_dir), f"apsi-{APSI_VERSION}.tar.gz")
+
+    if not os.path.isfile(tar_path):
+        print(f"Downloading APSI {APSI_VERSION} from {tar_url}...")
+        urllib.request.urlretrieve(tar_url, tar_path)
+
+    print(f"Extracting APSI {APSI_VERSION}...")
+    with tarfile.open(tar_path, "r:gz") as tf:
+        tf.extractall(path=os.path.dirname(apsi_dir))
+
+    extracted = os.path.join(os.path.dirname(apsi_dir), f"APSI-{APSI_VERSION}")
+    if os.path.isdir(extracted):
+        if os.path.isdir(apsi_dir):
+            shutil.rmtree(apsi_dir)
+        shutil.move(extracted, apsi_dir)
+
+    print("APSI source ready.")
+
+
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=""):
         Extension.__init__(self, name, sources=[])
@@ -151,6 +183,8 @@ class CMakeExtension(Extension):
 
 class CMakeBuild(build_ext):
     def build_extension(self, ext):
+        _ensure_apsi_source()
+
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
 
         if not extdir.endswith(os.path.sep):
