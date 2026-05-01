@@ -43,11 +43,11 @@ environment = "VCPKG_ROOT_DIR=/opt/vcpkg"
 archs = "x86_64 arm64"
 before-all = """
     brew install git && \
-    git clone https://github.com/microsoft/vcpkg /opt/vcpkg && \
-    /opt/vcpkg/bootstrap-vcpkg.sh && \
-    /opt/vcpkg/vcpkg install seal[no-throw-tran] kuku log4cplus cppzmq flatbuffers jsoncpp
+    git clone https://github.com/microsoft/vcpkg /tmp/vcpkg && \
+    /tmp/vcpkg/bootstrap-vcpkg.sh && \
+    /tmp/vcpkg/vcpkg install seal[no-throw-tran] kuku log4cplus cppzmq flatbuffers jsoncpp
     """
-environment = "VCPKG_ROOT_DIR=/opt/vcpkg"
+environment = "VCPKG_ROOT_DIR=/tmp/vcpkg"
 
 [tool.cibuildwheel.windows]
 archs = "AMD64"
