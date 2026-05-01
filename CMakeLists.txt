@@ -20,6 +20,8 @@ file(READ external/apsi/CMakeLists.txt APSI_CMAKE_CONTENT)
 string(REPLACE "find_package(SEAL 4.1 QUIET REQUIRED)" "find_package(SEAL QUIET REQUIRED)" APSI_CMAKE_CONTENT "${APSI_CMAKE_CONTENT}")
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/apsi_patched/CMakeLists.txt" "${APSI_CMAKE_CONTENT}")
 
+set(APSI_USE_ASM OFF CACHE BOOL "Use ASM implementation" FORCE)
+
 file(GLOB APSI_SUBDIRS LIST_DIRECTORIES true external/apsi/*)
 foreach(SUBDIR ${APSI_SUBDIRS})
     if(IS_DIRECTORY ${SUBDIR})
