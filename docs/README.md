@@ -8,7 +8,7 @@ This directory contains implementation plans for distributing PyAPSI across plat
 
 The sdist workflow is active and:
 - Builds a source tarball on every push/PR
-- Tests installation from the tarball on Python 3.11–3.14 (Ubuntu, macOS, and Windows)
+- Tests installation from the tarball on Python 3.14 (Ubuntu, macOS, and Windows)
 - Publishes to PyPI on tags only after successful install tests
 
 Users install with:

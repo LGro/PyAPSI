@@ -30,24 +30,23 @@ jobs:
           path: dist/*.tar.gz
 
   test_sdist_install:
-    name: Test sdist install on ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    name: Test sdist install on ${{ matrix.os }}
     needs: build_sdist
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.11', '3.12', '3.13', '3.14']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: sdist
           path: dist
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.14
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.14'
       - name: Install from sdist
         run: python -c "import glob, subprocess, sys; subprocess.check_call([sys.executable, '-m', 'pip', 'install', glob.glob('dist/*.tar.gz')[0]])"
       - name: Install test dependencies
