@@ -53,7 +53,7 @@ import zipfile
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 APSI_VERSION = "0.12.0"
 APSI_COMMIT = "b967a126b4e1c682b039afc2d76a98ea2c993230"
@@ -96,6 +96,7 @@ def _get_vcpkg_triplet():
         return "x64-windows-static-md"
     elif sys.platform.startswith("darwin"):
         import platform
+
         return "arm64-osx" if platform.machine() == "arm64" else "x64-osx"
     return "x64-linux"
 
@@ -172,7 +173,9 @@ def _install_vcpkg_deps(vcpkg_src_dir, triplet):
     vcpkg_exec = os.path.join(vcpkg_src_dir, "vcpkg")
     if sys.platform.startswith("win"):
         vcpkg_exec = os.path.join(vcpkg_src_dir, "vcpkg.exe")
-    subprocess.check_call([vcpkg_exec, "install", "--triplet", triplet] + deps, cwd=vcpkg_src_dir)
+    subprocess.check_call(
+        [vcpkg_exec, "install", "--triplet", triplet] + deps, cwd=vcpkg_src_dir
+    )
     print("vcpkg dependency installation complete.")
 
 
