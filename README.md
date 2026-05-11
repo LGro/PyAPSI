@@ -23,7 +23,7 @@ The build automatically selects the best CPU optimizations for your machine.
 **Requirements:**
 - C++ compiler (GCC >= 9, Clang >= 10, or MSVC >= 2019)
 - CMake >= 3.13.4
-- Python >= 3.11
+- Python 3.11–3.14
 - Internet access (vcpkg downloads dependencies during build)
 
 **Build time:** Approximately 5-15 minutes depending on your machine.
