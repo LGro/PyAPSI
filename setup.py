@@ -53,10 +53,11 @@ import zipfile
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
 
-__version__ = "0.2.1"
+__version__ = "0.2.3"
 
 APSI_VERSION = "0.12.0"
 APSI_COMMIT = "b967a126b4e1c682b039afc2d76a98ea2c993230"
+VCPKG_COMMIT = "4cf671c303551b27c6360c7c6e1ced5ec46d7258"
 
 PLAT_TO_CMAKE = {
     "win32": "Win32",
@@ -115,7 +116,7 @@ def _bootstrap_vcpkg(vcpkg_dir):
     if not os.path.isdir(vcpkg_dir):
         os.makedirs(vcpkg_dir, exist_ok=True)
 
-    zip_url = "https://github.com/microsoft/vcpkg/archive/refs/heads/master.zip"
+    zip_url = f"https://github.com/microsoft/vcpkg/archive/{VCPKG_COMMIT}.zip"
     zip_path = os.path.join(vcpkg_dir, "vcpkg-src.zip")
 
     if not os.path.isfile(zip_path):
