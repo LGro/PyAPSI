@@ -128,12 +128,13 @@ def _bootstrap_vcpkg(vcpkg_dir):
         print("Extracting vcpkg...")
         with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(vcpkg_dir)
-        first_entry = os.listdir(vcpkg_dir)[0]
-        extracted = os.path.join(vcpkg_dir, first_entry)
-        if os.path.isdir(extracted):
-            if os.path.isdir(extract_dir):
-                shutil.rmtree(extract_dir)
-            shutil.move(extracted, extract_dir)
+        for entry in os.listdir(vcpkg_dir):
+            extracted = os.path.join(vcpkg_dir, entry)
+            if os.path.isdir(extracted) and entry != "src":
+                if os.path.isdir(extract_dir):
+                    shutil.rmtree(extract_dir)
+                shutil.move(extracted, extract_dir)
+                break
 
     bootstrap_script = os.path.join(extract_dir, "bootstrap-vcpkg.sh")
     if sys.platform.startswith("win"):
