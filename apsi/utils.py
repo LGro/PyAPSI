@@ -9,7 +9,11 @@ from _pyapsi.utils import (
 )
 
 
-VALID_LOG_LEVELS = ["ALL", "DEBUG", "INFO", "WARNING", "ERROR", "OFF"]
+VALID_LOG_LEVELS = ["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "SUPPRESS"]
+
+# APSI 0.13.0 renamed the most verbose log level from "all" to "trace" and the quietest
+# from "off" to "suppress". The previous names remain accepted.
+DEPRECATED_LOG_LEVELS = {"ALL": "TRACE", "OFF": "SUPPRESS"}
 
 
 def set_thread_count(thread_count: int) -> None:
@@ -34,11 +38,13 @@ def set_log_level(level: str) -> None:
     """Set APSI log level.
 
     Args:
-        level: One of "ALL", "DEBUG", "INFO", "WARNING", "ERROR", "OFF"
+        level: One of "TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "SUPPRESS";
+            the former names "ALL" and "OFF" are accepted as "TRACE" and "SUPPRESS"
 
     Raises:
         ValueError: In case an invalid log level is provided
     """
+    level = DEPRECATED_LOG_LEVELS.get(level, level)
     if level not in VALID_LOG_LEVELS:
         raise ValueError(f"Invalid log level {level}, choose one of {VALID_LOG_LEVELS}")
     _set_log_level(level)
@@ -50,10 +56,17 @@ def enable_console_log() -> None:
 
 
 def disable_console_log() -> None:
-    """Disable APSI logging to standard output."""
+    """Disable APSI logging to standard output.
+
+    If a log file was set via `set_log_file`, output keeps going there.
+    """
     _set_console_log_disabled(True)
 
 
 def set_log_file(file_path: str) -> None:
-    """Set file path to which APSI log output should be written."""
+    """Set file path to which APSI log output should be appended.
+
+    Raises:
+        ValueError: In case the file cannot be opened for writing
+    """
     _set_log_file(file_path)

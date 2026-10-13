@@ -26,6 +26,8 @@
  */
 
 // STD
+#include <algorithm>
+#include <cctype>
 #include <sstream>
 #include <numeric>
 #include <random>
@@ -33,6 +35,7 @@
 #include <iostream>
 #include <fstream>
 #include <csignal>
+#include <string>
 
 // pybind11
 #include <pybind11/pybind11.h>
@@ -62,40 +65,65 @@ void sigint_handler(int param [[maybe_unused]])
     exit(0);
 }
 
-void set_log_level(const string &level)
-{
-    Log::Level ll;
+/*
+APSI 0.13.0 replaced the apsi::Log class with free functions and a pluggable apsi::Logger,
+which means Log::SetLogFile and Log::SetConsoleDisabled are gone. PyAPSI keeps offering the
+log file and the console as two knobs that can be set independently, so both settings are
+remembered here and the logger matching their combination is installed on every change.
+*/
+string _log_file_path;
+bool _console_log_enabled = true;
 
-    if (level == "all" || level == "ALL")
+void refresh_logger()
+{
+    if (!_log_file_path.empty())
     {
-        ll = Log::Level::all;
+        SetLogger(NewFileLogger(_log_file_path, _console_log_enabled));
     }
-    else if (level == "debug" || level == "DEBUG")
+    else if (_console_log_enabled)
     {
-        ll = Log::Level::debug;
-    }
-    else if (level == "info" || level == "INFO")
-    {
-        ll = Log::Level::info;
-    }
-    else if (level == "warning" || level == "WARNING")
-    {
-        ll = Log::Level::warning;
-    }
-    else if (level == "error" || level == "ERROR")
-    {
-        ll = Log::Level::error;
-    }
-    else if (level == "off" || level == "OFF")
-    {
-        ll = Log::Level::off;
+        ResetDefaultLogger();
     }
     else
     {
-        throw invalid_argument("unknown log level");
+        // A logger without any handler discards every message. The level threshold is
+        // deliberately left alone, so that it still applies once a sink is installed again.
+        SetLogger(Logger::Create({}, {}, {}));
+    }
+}
+
+void set_log_level(const string &level)
+{
+    string normalized_level(level.size(), '\0');
+    transform(level.begin(), level.end(), normalized_level.begin(), [](unsigned char c) {
+        return static_cast<char>(tolower(c));
+    });
+
+    // APSI 0.13.0 renamed the most verbose level from "all" to "trace" and the quietest
+    // from "off" to "suppress". Both of the previous names remain accepted here.
+    if (normalized_level == "all")
+    {
+        normalized_level = "trace";
+    }
+    else if (normalized_level == "off")
+    {
+        normalized_level = "suppress";
     }
 
-    Log::SetLogLevel(ll);
+    // Throws std::invalid_argument for anything that is not a level name
+    SetLogLevel(normalized_level);
+}
+
+void set_console_log_disabled(bool disabled)
+{
+    _console_log_enabled = !disabled;
+    refresh_logger();
+}
+
+void set_log_file(const string &log_file_path)
+{
+    _log_file_path = log_file_path;
+    refresh_logger();
 }
 
 /*
@@ -140,6 +168,13 @@ public:
             receiver_items.push_back(item.cast<std::string>());
         }
 
+        if (receiver_items.size() > oprf::oprf_query_count_max)
+        {
+            throw invalid_argument(
+                "a single query cannot hold more than " + to_string(oprf::oprf_query_count_max) +
+                " items");
+        }
+
         _oprf_receiver = Receiver::CreateOPRFReceiver(receiver_items);
         Request request = Receiver::CreateOPRFRequest(_oprf_receiver);
 
@@ -151,10 +186,33 @@ public:
     {
         _channel.set_in_buffer(oprf_response_string);
         OPRFResponse oprf_response = to_oprf_response(_channel.receive_response());
-        tie(_hashed_recv_items, _label_keys) = Receiver::ExtractHashes(oprf_response, _oprf_receiver);
+        if (!oprf_response)
+        {
+            throw runtime_error("Failed reading the OPRF response");
+        }
+        auto hashes_and_label_keys = Receiver::ExtractHashes(oprf_response, _oprf_receiver);
+        _hashed_recv_items = move(hashes_and_label_keys.first);
+        _label_keys = move(hashes_and_label_keys.second);
+        if (_hashed_recv_items.size() != _oprf_receiver.item_count())
+        {
+            // ExtractHashes reports a response that does not match the request by returning
+            // nothing, rather than by throwing
+            throw runtime_error("Failed extracting the OPRF hashes from the OPRF response");
+        }
+
+        // Since APSI 1.0 every query is expected to carry key material of its own, so that a
+        // server cannot tell from the public keys that two queries came from the same client.
+        // Receiver::create_query does not rotate the keys itself, because the result of an
+        // earlier query is encrypted under the key a rotation discards; a caller sending more
+        // than one query has to rotate them while none is in flight, which is here.
+        if (_query_created)
+        {
+            _receiver.reset_keys();
+        }
 
         // Create query and send
         pair<Request, IndexTranslationTable> recv_query = _receiver.create_query(_hashed_recv_items);
+        _query_created = true;
         _itt = make_shared<IndexTranslationTable>(move(recv_query.second));
 
         _channel.send(move(recv_query.first));
@@ -163,54 +221,60 @@ public:
 
     py::list extract_unlabeled_result_from_query_response(const string &query_response_string)
     {
-        signal(SIGINT, sigint_handler);
-
-        _channel.set_in_buffer(query_response_string);
-        QueryResponse query_response = to_query_response(_channel.receive_response());
-        uint32_t package_count = query_response->package_count;
-
-        vector<ResultPart> rps;
-        while (package_count--)
-        {
-            rps.push_back(_channel.receive_result(_receiver.get_seal_context()));
-        }
-
-        vector<MatchRecord> query_result = _receiver.process_result(_label_keys, *_itt, rps);
-
         py::list matches;
-        for (auto const &qr : query_result)
+        for (auto const &qr : process_query_response(query_response_string))
             matches.append(qr.found);
         return matches;
     }
 
     py::list extract_labeled_result_from_query_response(const string &query_response_string)
     {
-        signal(SIGINT, sigint_handler);
-
-        _channel.set_in_buffer(query_response_string);
-        QueryResponse query_response = to_query_response(_channel.receive_response());
-        uint32_t package_count = query_response->package_count;
-
-        vector<ResultPart> rps;
-        while (package_count--)
-        {
-            rps.push_back(_channel.receive_result(_receiver.get_seal_context()));
-        }
-
-        vector<MatchRecord> query_result = _receiver.process_result(_label_keys, *_itt, rps);
-
         py::list labels;
-        for (auto const &qr : query_result)
+        for (auto const &qr : process_query_response(query_response_string))
             labels.append(qr.label.to_string());
         return labels;
     }
 
 private:
+    vector<MatchRecord> process_query_response(const string &query_response_string)
+    {
+        signal(SIGINT, sigint_handler);
+
+        if (!_itt)
+        {
+            throw runtime_error("You need to build a query first.");
+        }
+
+        _channel.set_in_buffer(query_response_string);
+        QueryResponse query_response = to_query_response(_channel.receive_response());
+        if (!query_response)
+        {
+            throw runtime_error("Failed reading the query response");
+        }
+        uint32_t package_count = query_response->package_count;
+
+        vector<ResultPart> rps;
+        while (package_count--)
+        {
+            // Since APSI 1.0 a channel reports a result part it could not read by returning
+            // nullptr, which process_result would then skip silently
+            ResultPart rp = _channel.receive_result(_receiver.get_seal_context());
+            if (!rp)
+            {
+                throw runtime_error("Failed reading all result parts of the query response");
+            }
+            rps.push_back(move(rp));
+        }
+
+        return _receiver.process_result(_label_keys, *_itt, rps);
+    }
+
     shared_ptr<IndexTranslationTable> _itt;
     Receiver _receiver;
     oprf::OPRFReceiver _oprf_receiver = oprf::OPRFReceiver(vector<Item>());
     vector<HashedItem> _hashed_recv_items;
-    vector<LabelKey> _label_keys;
+    LabelKeyVector _label_keys;
+    bool _query_created = false;
     StringStreamChannel _channel;
 };
 
@@ -223,7 +287,6 @@ public:
         string &params_json, size_t label_byte_count,
         size_t nonce_byte_count, bool compressed)
     {
-        db_label_byte_count = label_byte_count;
         auto params = PSIParams::Load(params_json);
         _db = make_shared<SenderDB>(
             params, label_byte_count, nonce_byte_count, compressed);
@@ -235,12 +298,16 @@ public:
         {
             ofstream ofs;
             ofs.open(db_file_path, ios::binary);
+            if (!ofs.is_open())
+            {
+                throw runtime_error("cannot open " + db_file_path + " for writing");
+            }
             _db->save(ofs);
             ofs.close();
         }
         catch (const exception &e)
         {
-            throw runtime_error("Failed saving database");
+            throw runtime_error(string("Failed saving database: ") + e.what());
         }
     }
 
@@ -250,14 +317,27 @@ public:
         {
             ifstream ifs;
             ifs.open(db_file_path, ios::binary);
+            if (!ifs.is_open())
+            {
+                throw runtime_error("cannot open " + db_file_path + " for reading");
+            }
             auto [data, size] = SenderDB::Load(ifs);
             _db = make_shared<SenderDB>(move(data));
             ifs.close();
         }
         catch (const exception &e)
         {
-            throw runtime_error("Failed loading database");
+            // APSI 1.0 rejects a serialized SenderDB that omits a required field, so the
+            // reason for a failure is worth passing on
+            throw runtime_error(string("Failed loading database: ") + e.what());
         }
+    }
+
+    size_t get_label_byte_count() const
+    {
+        // Reads the value from the database itself, so that it is also correct for a
+        // database that was loaded rather than initialized here
+        return _db ? _db->get_label_byte_count() : 0;
     }
 
     void add_item(const string &input_item, const string &input_label)
@@ -288,10 +368,14 @@ public:
     {
         _channel.set_in_buffer(oprf_request_string);
 
-        OPRFRequest oprf_request2 = to_oprf_request(_channel.receive_operation(
+        OPRFRequest oprf_request = to_oprf_request(_channel.receive_operation(
             nullptr,
             network::SenderOperationType::sop_oprf));
-        Sender::RunOPRF(oprf_request2, _db->get_oprf_key(), _channel);
+        if (!oprf_request)
+        {
+            throw runtime_error("Failed reading the OPRF request");
+        }
+        Sender::RunOPRF(oprf_request, _db->get_oprf_key(), _channel);
         return py::bytes(_channel.extract_out_buffer());
     }
 
@@ -302,14 +386,21 @@ public:
         QueryRequest sender_query = to_query_request(_channel.receive_operation(
             _db->get_seal_context(),
             network::SenderOperationType::sop_query));
+        if (!sender_query)
+        {
+            throw runtime_error("Failed reading the query request");
+        }
         Query query(move(sender_query), _db);
+        if (!query)
+        {
+            // Since APSI 1.0 a query that the SenderDB parameters no longer describe is
+            // rejected rather than answered
+            throw runtime_error("The query does not match the parameters of this database");
+        }
 
         Sender::RunQuery(query, _channel);
         return py::bytes(_channel.extract_out_buffer());
     }
-
-public:
-    size_t db_label_byte_count;
 
 private:
     shared_ptr<SenderDB> _db;
@@ -321,9 +412,9 @@ PYBIND11_MODULE(_pyapsi, m)
     py::module utils = m.def_submodule("utils", "APSI related utilities.");
     utils.def("_set_log_level", &set_log_level,
               "Set APSI log level.");
-    utils.def("_set_console_log_disabled", &Log::SetConsoleDisabled,
+    utils.def("_set_console_log_disabled", &set_console_log_disabled,
               "Enable or disable standard out console logging.");
-    utils.def("_set_log_file", &Log::SetLogFile,
+    utils.def("_set_log_file", &set_log_file,
               "Set file for APSI log output.");
     utils.def("_set_thread_count", &ThreadPoolMgr::SetThreadCount,
               "Set thread count for parallelization.");
@@ -339,8 +430,7 @@ PYBIND11_MODULE(_pyapsi, m)
         .def("_add_unlabeled_items", &APSIServer::add_unlabeled_items)
         .def("_handle_oprf_request", &APSIServer::handle_oprf_request)
         .def("_handle_query", &APSIServer::handle_query)
-        // TODO: use def_property_readonly instead
-        .def_readwrite("_db_label_byte_count", &APSIServer::db_label_byte_count);
+        .def_property_readonly("_db_label_byte_count", &APSIServer::get_label_byte_count);
     py::class_<APSIClient>(m, "APSIClient")
         .def(py::init<string &>())
         .def("_oprf_request", &APSIClient::oprf_request)

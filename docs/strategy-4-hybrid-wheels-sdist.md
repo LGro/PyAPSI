@@ -54,7 +54,7 @@ before-all = """
     yum install -y git zip && \
     git clone https://github.com/microsoft/vcpkg /opt/vcpkg && \
     /opt/vcpkg/bootstrap-vcpkg.sh && \
-    /opt/vcpkg/vcpkg install seal[no-throw-tran]:x64-linux kuku:x64-linux log4cplus:x64-linux cppzmq:x64-linux flatbuffers:x64-linux jsoncpp:x64-linux
+    /opt/vcpkg/vcpkg install seal[core,zstd,no-throw-tran]:x64-linux ms-gsl:x64-linux kuku:x64-linux flatbuffers:x64-linux jsoncpp:x64-linux
 """
 environment = "VCPKG_ROOT_DIR=/opt/vcpkg"
 
@@ -64,7 +64,7 @@ before-all = """
     brew install git && \
     git clone https://github.com/microsoft/vcpkg /tmp/vcpkg && \
     /tmp/vcpkg/bootstrap-vcpkg.sh && \
-    /tmp/vcpkg/vcpkg install seal[no-throw-tran] kuku log4cplus cppzmq flatbuffers jsoncpp
+    /tmp/vcpkg/vcpkg install seal[core,zstd,no-throw-tran] ms-gsl kuku flatbuffers jsoncpp
 """
 environment = "VCPKG_ROOT_DIR=/tmp/vcpkg"
 
@@ -73,7 +73,7 @@ archs = "AMD64"
 before-all = """
     git clone https://github.com/microsoft/vcpkg C:\\vcpkg && \
     C:\\vcpkg\\bootstrap-vcpkg.bat && \
-    C:\\vcpkg\\vcpkg install seal[no-throw-tran]:x64-windows-static-md kuku:x64-windows-static-md log4cplus:x64-windows-static-md cppzmq:x64-windows-static-md flatbuffers:x64-windows-static-md jsoncpp:x64-windows-static-md
+    C:\\vcpkg\\vcpkg install seal[core,zstd,no-throw-tran]:x64-windows-static-md ms-gsl:x64-windows-static-md kuku:x64-windows-static-md flatbuffers:x64-windows-static-md jsoncpp:x64-windows-static-md
 """
 environment = "VCPKG_ROOT_DIR=C:\\vcpkg"
 ```

@@ -89,6 +89,27 @@ def test_save_and_load_db(apsi_params: str, tmp_path: pathlib.Path):
     assert _query(client, new_server, ["item", "unknown"]) == ["item"]
 
 
+def test_save_and_load_labeled_db(apsi_params: str, tmp_path: pathlib.Path):
+    db_file_path = str(tmp_path / "apsi-labeled.db")
+
+    orig_server = LabeledServer()
+    orig_server.init_db(apsi_params, max_label_length=10)
+    orig_server.add_item("item", "1234567890")
+    orig_server.save_db(db_file_path)
+
+    new_server = LabeledServer()
+    new_server.load_db(db_file_path)
+
+    # The maximum label length is read back from the loaded database
+    assert new_server.max_label_length == 10
+    with pytest.raises(ValueError, match="length"):
+        new_server.add_item("item2", "12345678901")
+
+    client = LabeledClient(apsi_params)
+
+    assert _query(client, new_server, ["item", "unknown"]) == {"item": "1234567890"}
+
+
 def test_load_non_existent_db_fails():
     server = UnlabeledServer()
 
@@ -112,18 +133,21 @@ def test_readme_example():
     {
         "table_params": {
             "hash_func_count": 3,
-            "table_size": 512,
-            "max_items_per_bin": 92
+            "table_size": 585,
+            "max_items_per_bin": 180
         },
-        "item_params": {"felts_per_item": 8},
+        "item_params": {"felts_per_item": 7},
         "query_params": {
             "ps_low_degree": 0,
-            "query_powers": [1, 3, 4, 5, 8, 14, 20, 26, 32, 38, 41, 42, 43, 45, 46]
+            "query_powers": [
+                1, 3, 4, 6, 10, 13, 15, 21, 29, 37, 45,
+                53, 61, 69, 77, 81, 83, 86, 87, 90, 92, 96
+            ]
         },
         "seal_params": {
-            "plain_modulus": 40961,
+            "plain_modulus": 65537,
             "poly_modulus_degree": 4096,
-            "coeff_modulus_bits": [40, 32, 32]
+            "coeff_modulus_bits": [40, 40, 24]
         }
     }
     """

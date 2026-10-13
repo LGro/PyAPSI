@@ -1,26 +1,31 @@
-import json
-
 import pytest
+
+# APSI's parameters/1M-256.json, as retuned by APSI 1.0 to stay below the documented
+# 2^-40 false-positive probability per query
+APSI_PARAMS = """
+{
+    "table_params": {
+        "hash_func_count": 3,
+        "table_size": 585,
+        "max_items_per_bin": 180
+    },
+    "item_params": {"felts_per_item": 7},
+    "query_params": {
+        "ps_low_degree": 0,
+        "query_powers": [
+            1, 3, 4, 6, 10, 13, 15, 21, 29, 37, 45,
+            53, 61, 69, 77, 81, 83, 86, 87, 90, 92, 96
+        ]
+    },
+    "seal_params": {
+        "plain_modulus": 65537,
+        "poly_modulus_degree": 4096,
+        "coeff_modulus_bits": [40, 40, 24]
+    }
+}
+"""
 
 
 @pytest.fixture
 def apsi_params() -> str:
-    return json.dumps(
-        {
-            "table_params": {
-                "hash_func_count": 3,
-                "table_size": 512,
-                "max_items_per_bin": 92,
-            },
-            "item_params": {"felts_per_item": 8},
-            "query_params": {
-                "ps_low_degree": 0,
-                "query_powers": [1, 3, 4, 5, 8, 14, 20, 26, 32, 38, 41, 42, 43, 45, 46],
-            },
-            "seal_params": {
-                "plain_modulus": 40961,
-                "poly_modulus_degree": 4096,
-                "coeff_modulus_bits": [40, 32, 32],
-            },
-        }
-    )
+    return APSI_PARAMS
