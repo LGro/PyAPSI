@@ -9,6 +9,27 @@
 Python wrapper for labeled and unlabeled asymmetric private set intersection
 ([APSI](https://github.com/microsoft/apsi)).
 
+Built against APSI 1.1.0.
+
+## Upgrading to PyAPSI 0.3
+
+PyAPSI 0.3 moves from APSI 0.12 to APSI 1.1, which brings a few user visible changes:
+
+- The log levels are named `"TRACE"`, `"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"` and
+  `"SUPPRESS"`. The previous `"ALL"` and `"OFF"` are still accepted as `"TRACE"` and
+  `"SUPPRESS"` respectively.
+- APSI retuned its shipped parameter sets, because most of them were above the documented
+  2^-40 false-positive probability per query. A server and a client have to agree on their
+  parameters, so both sides of a deployment should move to the new values together; the
+  example below is APSI's `parameters/1M-256.json`.
+- APSI's serialization version is unchanged and the schemas stayed wire compatible, so a
+  database saved by an earlier PyAPSI release should still load, but that is untested
+  here. A cuckoo filter written before APSI 1.0 carries no assertion that nothing was
+  dropped from it, so it is loaded as one that may have dropped items; that costs some
+  query time on the affected bin bundles, not correctness.
+- Each query a client sends now carries key material of its own, so that a server can no
+  longer tell from the public keys that two queries came from the same client.
+
 ## Installation
 
 ### From PyPI (builds from source)
@@ -21,8 +42,9 @@ This downloads the source distribution and builds APSI + all dependencies locall
 The build automatically selects the best CPU optimizations for your machine.
 
 **Requirements:**
-- C++ compiler (GCC >= 9, Clang >= 10, or MSVC >= 2019)
-- CMake >= 3.13.4
+- C++ compiler with full C++17 support (GCC, Clang, or Visual Studio 2022/2026, as
+  required by APSI 1.1)
+- CMake >= 3.25
 - Python 3.11–3.14
 - Internet access (vcpkg downloads dependencies during build)
 
@@ -55,18 +77,21 @@ apsi_params = """
 {
     "table_params": {
         "hash_func_count": 3,
-        "table_size": 512,
-        "max_items_per_bin": 92
+        "table_size": 585,
+        "max_items_per_bin": 180
     },
-    "item_params": {"felts_per_item": 8},
+    "item_params": {"felts_per_item": 7},
     "query_params": {
         "ps_low_degree": 0,
-        "query_powers": [1, 3, 4, 5, 8, 14, 20, 26, 32, 38, 41, 42, 43, 45, 46]
+        "query_powers": [
+            1, 3, 4, 6, 10, 13, 15, 21, 29, 37, 45,
+            53, 61, 69, 77, 81, 83, 86, 87, 90, 92, 96
+        ]
     },
     "seal_params": {
-        "plain_modulus": 40961,
+        "plain_modulus": 65537,
         "poly_modulus_degree": 4096,
-        "coeff_modulus_bits": [40, 32, 32]
+        "coeff_modulus_bits": [40, 40, 24]
     }
 }
 """

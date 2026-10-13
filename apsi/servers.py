@@ -59,8 +59,8 @@ class LabeledServer(_BaseServer):
 
     @property
     def max_label_length(self) -> int:
-        # Refers to what is initialized via max_label_length via the underlying C++
-        # implementation, assuring availability also for loaded databases
+        # Read from the underlying APSI database itself, so that it also reflects what a
+        # database loaded via `load_db` was initialized with
         return self._db_label_byte_count
 
     def __init__(self):

@@ -16,14 +16,16 @@ Packaging PyAPSI for conda-forge would provide an alternative distribution chann
 
 | Dependency | Package name | Status |
 |------------|-------------|--------|
-| SEAL | `libseal` or `seal` | Needs verification |
+| SEAL (>= 4.4.5, built with `SEAL_THROW_ON_TRANSPARENT_CIPHERTEXT=OFF`) | `libseal` or `seal` | Needs verification |
 | Kuku | `kuku` | Needs verification |
-| log4cplus | `log4cplus` | Likely available |
-| cppzmq | `cppzmq` | Available |
-| zeromq | `zeromq` | Available |
 | flatbuffers | `flatbuffers` | Available |
-| jsoncpp | `jsoncpp` | Available |
+| jsoncpp (>= 1.9.5) | `jsoncpp` | Available |
 | Microsoft GSL | `ms-gsl` | Available |
+
+APSI 1.0 requires a SEAL built with `SEAL_THROW_ON_TRANSPARENT_CIPHERTEXT=OFF`, which a
+conda-forge `seal` package is unlikely to provide, so that would have to be verified
+first. ZeroMQ/cppzmq and log4cplus are not needed: PyAPSI builds APSI with
+`APSI_USE_ZMQ=OFF`, and APSI 0.13.0 replaced log4cplus with its built-in logger.
 
 If SEAL and/or Kuku are not on conda-forge, feedstocks for those packages would need to be created first.
 

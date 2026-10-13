@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13.4)
+cmake_minimum_required(VERSION 3.25)
 
 project(_pyapsi)
 
@@ -10,6 +10,13 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # See docs/README.md for details.
 set(APSI_USE_ASM OFF CACHE BOOL "Use ASM implementation" FORCE)
 
+# PyAPSI exposes only APSI's "advanced" API on top of network::StreamChannel, so the
+# ZeroMQ based channel and the command line interface are not needed. Dropping them also
+# drops the ZeroMQ/cppzmq dependency from the build (see VCPKG_DEPENDENCIES in setup.py).
+set(APSI_USE_ZMQ OFF CACHE BOOL "Use ZeroMQ for networking" FORCE)
+set(APSI_BUILD_CLI OFF CACHE BOOL "Build example command line interface applications" FORCE)
+set(APSI_BUILD_TESTS OFF CACHE BOOL "Build unit and integration tests for APSI" FORCE)
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -19,19 +26,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-file(READ external/apsi/CMakeLists.txt APSI_CMAKE_CONTENT)
-string(REPLACE "find_package(SEAL 4.1 QUIET REQUIRED)" "find_package(SEAL QUIET REQUIRED)" APSI_CMAKE_CONTENT "${APSI_CMAKE_CONTENT}")
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/apsi_patched/CMakeLists.txt" "${APSI_CMAKE_CONTENT}")
+add_subdirectory(external/apsi)
 
-file(GLOB APSI_SUBDIRS LIST_DIRECTORIES true external/apsi/*)
-foreach(SUBDIR ${APSI_SUBDIRS})
-    if(IS_DIRECTORY ${SUBDIR})
-        get_filename_component(DIRNAME ${SUBDIR} NAME)
-        file(COPY ${SUBDIR}/ DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/apsi_patched/${DIRNAME}/")
-    endif()
-endforeach()
-
-add_subdirectory("${CMAKE_CURRENT_BINARY_DIR}/apsi_patched/")
+# APSI's vendored FourQ headers are configured into ${CMAKE_BINARY_DIR}/common/apsi/fourq/,
+# which equals its own include path only in a standalone APSI build. Here APSI is a
+# subdirectory, so ${CMAKE_BINARY_DIR} is PyAPSI's build root and that path has to be
+# added for APSI's own sources to find "apsi/fourq/...".
+target_include_directories(apsi PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/common>)
 
 pybind11_add_module(_pyapsi src/main.cpp)
 

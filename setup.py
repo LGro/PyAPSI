@@ -53,11 +53,26 @@ import zipfile
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
 
-__version__ = "0.2.3"
+__version__ = "0.3.0"
 
-APSI_VERSION = "0.12.0"
-APSI_COMMIT = "b967a126b4e1c682b039afc2d76a98ea2c993230"
-VCPKG_COMMIT = "4cf671c303551b27c6360c7c6e1ced5ec46d7258"
+APSI_VERSION = "1.1.0"
+APSI_COMMIT = "c8020026972258eabad054ad1225aea41f8d1d7d"
+# Matches the "builtin-baseline" of APSI 1.1.0's vcpkg.json, so that the dependency
+# versions are the ones APSI is tested against (Microsoft SEAL 4.4.5, jsoncpp 1.9.6).
+VCPKG_COMMIT = "2c88ca199b27256e4c7d9f796216f82f2b976b0e"
+
+# APSI 1.1.0 dependencies, mirroring its vcpkg.json. Microsoft SEAL has to be built with
+# SEAL_THROW_ON_TRANSPARENT_CIPHERTEXT=OFF ("no-throw-tran"), otherwise APSI refuses to
+# compile. ZeroMQ/cppzmq is not needed because PyAPSI only uses the stream based channel
+# (see APSI_USE_ZMQ in CMakeLists.txt), and log4cplus was dropped by APSI 0.13.0 in favor
+# of its built-in logger.
+VCPKG_DEPENDENCIES = [
+    "seal[core,zstd,no-throw-tran]",
+    "ms-gsl",
+    "kuku",
+    "flatbuffers",
+    "jsoncpp",
+]
 
 PLAT_TO_CMAKE = {
     "win32": "Win32",
@@ -101,12 +116,35 @@ def _get_vcpkg_triplet():
     return "x64-linux"
 
 
-def _vcpkg_deps_installed(vcpkg_dir, triplet):
-    """Check if vcpkg dependencies are installed for the given triplet."""
+def _vcpkg_deps_stamp_path(vcpkg_src_dir, triplet):
+    """Return the path of the file recording which dependencies were installed."""
+    return os.path.join(vcpkg_src_dir, f"pyapsi-deps-{triplet}.stamp")
+
+
+def _vcpkg_deps_stamp(triplet):
+    """Return a marker identifying the dependency set that is required."""
+    return "\n".join([VCPKG_COMMIT, triplet] + sorted(VCPKG_DEPENDENCIES))
+
+
+def _vcpkg_deps_installed(vcpkg_src_dir, triplet):
+    """Check if the required vcpkg dependencies are installed for the given triplet.
+
+    The stamp records the vcpkg commit and the dependency list, so that an existing
+    `_vcpkg` directory left over from an earlier PyAPSI release (which pinned different
+    dependency versions) is detected and rebuilt instead of failing the CMake configure.
+    """
     seal_config = os.path.join(
-        vcpkg_dir, "installed", triplet, "share", "seal", "SEALConfig.cmake"
+        vcpkg_src_dir, "installed", triplet, "share", "seal", "SEALConfig.cmake"
     )
-    return os.path.isfile(seal_config)
+    if not os.path.isfile(seal_config):
+        return False
+
+    stamp_path = _vcpkg_deps_stamp_path(vcpkg_src_dir, triplet)
+    if not os.path.isfile(stamp_path):
+        return False
+
+    with open(stamp_path, "r") as fh:
+        return fh.read() == _vcpkg_deps_stamp(triplet)
 
 
 def _bootstrap_vcpkg(vcpkg_dir):
@@ -163,18 +201,17 @@ def _bootstrap_vcpkg(vcpkg_dir):
 def _install_vcpkg_deps(vcpkg_src_dir, triplet):
     """Install APSI dependencies via vcpkg for the given triplet."""
     print(f"Installing APSI dependencies via vcpkg (triplet: {triplet})...")
-    deps = [
-        "seal[no-throw-tran]",
-        "kuku",
-        "log4cplus",
-        "cppzmq",
-        "flatbuffers",
-        "jsoncpp",
-    ]
     vcpkg_exec = os.path.join(vcpkg_src_dir, "vcpkg")
     if sys.platform.startswith("win"):
         vcpkg_exec = os.path.join(vcpkg_src_dir, "vcpkg.exe")
-    subprocess.check_call([vcpkg_exec, "install", "--triplet", triplet] + deps, cwd=vcpkg_src_dir)
+    subprocess.check_call(
+        [vcpkg_exec, "install", "--triplet", triplet] + VCPKG_DEPENDENCIES,
+        cwd=vcpkg_src_dir,
+    )
+
+    with open(_vcpkg_deps_stamp_path(vcpkg_src_dir, triplet), "w") as fh:
+        fh.write(_vcpkg_deps_stamp(triplet))
+
     print("vcpkg dependency installation complete.")
 
 
@@ -184,14 +221,24 @@ def _get_vcpkg_toolchain(vcpkg_src_dir):
 
 
 def _ensure_apsi_source():
-    """Download APSI source if not present (for sdist installs)."""
+    """Download the pinned APSI source if not already present.
+
+    A stamp file records the commit, so that an `external/apsi` checkout of a different
+    APSI version (for example from a previous PyAPSI release) is replaced rather than
+    silently built against.
+    """
     apsi_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "external", "apsi"
     )
-    if os.path.isdir(os.path.join(apsi_dir, "CMakeLists.txt")):
-        return
+    stamp_path = os.path.join(apsi_dir, ".pyapsi-apsi-commit")
+    if os.path.isfile(os.path.join(apsi_dir, "CMakeLists.txt")) and os.path.isfile(
+        stamp_path
+    ):
+        with open(stamp_path, "r") as fh:
+            if fh.read().strip() == APSI_COMMIT:
+                return
 
-    print("APSI source not found, downloading...")
+    print(f"APSI {APSI_VERSION} source not found, downloading...")
     os.makedirs(os.path.dirname(apsi_dir), exist_ok=True)
 
     tar_url = f"https://github.com/microsoft/APSI/archive/{APSI_COMMIT}.tar.gz"
@@ -210,6 +257,9 @@ def _ensure_apsi_source():
         if os.path.isdir(apsi_dir):
             shutil.rmtree(apsi_dir)
         shutil.move(extracted, apsi_dir)
+
+    with open(stamp_path, "w") as fh:
+        fh.write(APSI_COMMIT)
 
     print("APSI source ready.")
 
@@ -253,7 +303,7 @@ class CMakeBuild(build_ext):
         else:
             vcpkg_src_dir = _bootstrap_vcpkg(vcpkg_dir)
 
-        if not _vcpkg_deps_installed(vcpkg_dir, triplet):
+        if not _vcpkg_deps_installed(vcpkg_src_dir, triplet):
             _install_vcpkg_deps(vcpkg_src_dir, triplet)
 
         toolchain = _get_vcpkg_toolchain(vcpkg_src_dir)

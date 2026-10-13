@@ -5,6 +5,7 @@ from contextlib import redirect_stdout
 import pytest
 from apsi.servers import UnlabeledServer
 from apsi.utils import (
+    VALID_LOG_LEVELS,
     disable_console_log,
     enable_console_log,
     get_thread_count,
@@ -27,6 +28,22 @@ def _something_that_logs(apsi_params: str) -> str:
 def test_thread_count(thread_count: int):
     set_thread_count(thread_count)
     assert get_thread_count() == thread_count
+
+
+@pytest.mark.parametrize("level", VALID_LOG_LEVELS)
+def test_set_log_level(level: str):
+    set_log_level(level)
+
+
+@pytest.mark.parametrize("level", ["ALL", "OFF"])
+def test_set_deprecated_log_level(level: str):
+    """The log level names APSI used before 0.13.0 are still accepted."""
+    set_log_level(level)
+
+
+def test_set_invalid_log_level_raises_error():
+    with pytest.raises(ValueError, match="Invalid log level"):
+        set_log_level("VERBOSE")
 
 
 def test_log_file_output(tmp_path: pathlib.Path, apsi_params: str):
